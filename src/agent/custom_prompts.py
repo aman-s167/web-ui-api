@@ -13,7 +13,7 @@ from .custom_views import CustomAgentStepInfo
 def flatten_error(err):
     """
     Recursively flatten nested lists and tuples, converting all items to strings.
-    (This helper is retained in case you need it later.)
+    (This helper is retained for potential future use.)
     """
     result = []
     if isinstance(err, (list, tuple)):
@@ -28,9 +28,6 @@ def flatten_error(err):
 
 class CustomSystemPrompt(SystemPrompt):
     def important_rules(self) -> str:
-        """
-        Returns the important rules for the agent.
-        """
         text = r"""
     1. RESPONSE FORMAT: You must ALWAYS respond with valid JSON in this exact format:
        {
@@ -179,12 +176,13 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
             state_description += f'Previous step: {self.step_info.step_number-1}/{self.step_info.max_steps} \n'
             for i, result in enumerate(self.result):
                 action = self.actions[i]
-                state_description += f"Previous action {i + 1}/{len(self.result)}: {action.model_dump_json(exclude_unset=True)}\n"
+                # Force string conversion of action dump.
+                state_description += f"Previous action {i + 1}/{len(self.result)}: {str(action.model_dump_json(exclude_unset=True))}\n"
                 if result.include_in_memory:
                     if result.extracted_content:
-                        state_description += f"Result of previous action {i + 1}/{len(self.result)}: {result.extracted_content}\n"
+                        state_description += f"Result of previous action {i + 1}/{len(self.result)}: {str(result.extracted_content)}\n"
                     if result.error:
-                        # Force the error to a string using repr to handle nested structures.
+                        # Force conversion of error to a string using repr.
                         error_str = repr(result.error)
                         error_str = error_str[-self.max_error_length:]
                         state_description += f"Error of previous action {i + 1}/{len(self.result)}: ...{error_str}\n"
