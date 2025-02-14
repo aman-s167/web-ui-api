@@ -13,17 +13,16 @@ from .custom_views import CustomAgentStepInfo
 def flatten_error(err):
     """
     Recursively flatten nested lists and tuples, converting all items to strings.
-    (This helper is retained for potential future use.)
     """
-    result = []
+    flat = []
     if isinstance(err, (list, tuple)):
         for item in err:
-            result.extend(flatten_error(item))
+            flat.extend(flatten_error(item))
     elif isinstance(err, dict):
-        result.append(str(err))
+        flat.append(str(err))
     else:
-        result.append(str(err))
-    return result
+        flat.append(str(err))
+    return flat
 
 
 class CustomSystemPrompt(SystemPrompt):
@@ -176,14 +175,14 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
             state_description += f'Previous step: {self.step_info.step_number-1}/{self.step_info.max_steps} \n'
             for i, result in enumerate(self.result):
                 action = self.actions[i]
-                # Force string conversion of action dump.
                 state_description += f"Previous action {i + 1}/{len(self.result)}: {str(action.model_dump_json(exclude_unset=True))}\n"
                 if result.include_in_memory:
                     if result.extracted_content:
                         state_description += f"Result of previous action {i + 1}/{len(self.result)}: {str(result.extracted_content)}\n"
                     if result.error:
-                        # Force conversion of error to a string using repr.
-                        error_str = repr(result.error)
+                        # Force conversion to string using repr on the flattened error list.
+                        error_list = flatten_error(result.error)
+                        error_str = repr(error_list)
                         error_str = error_str[-self.max_error_length:]
                         state_description += f"Error of previous action {i + 1}/{len(self.result)}: ...{error_str}\n"
         if self.state.screenshot:
