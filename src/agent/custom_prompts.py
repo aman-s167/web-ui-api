@@ -1,6 +1,7 @@
 import pdb
 from typing import List, Optional
 from datetime import datetime
+import logging
 
 from browser_use.agent.prompts import SystemPrompt, AgentMessagePrompt
 from browser_use.agent.views import ActionResult, ActionModel
@@ -9,6 +10,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from .custom_views import CustomAgentStepInfo
 
+logger = logging.getLogger(__name__)
 
 def flatten_error(err):
     """
@@ -27,6 +29,9 @@ def flatten_error(err):
 
 class CustomSystemPrompt(SystemPrompt):
     def important_rules(self) -> str:
+        """
+        Returns the important rules for the agent.
+        """
         text = r"""
     1. RESPONSE FORMAT: You must ALWAYS respond with valid JSON in this exact format:
        {
@@ -180,9 +185,9 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
                     if result.extracted_content:
                         state_description += f"Result of previous action {i + 1}/{len(self.result)}: {str(result.extracted_content)}\n"
                     if result.error:
-                        # Force conversion to string using repr on the flattened error list.
-                        error_list = flatten_error(result.error)
-                        error_str = repr(error_list)
+                        # Log error type and content for debugging.
+                        logger.error("Result.error type: %s, value: %s", type(result.error), result.error)
+                        error_str = repr(result.error)
                         error_str = error_str[-self.max_error_length:]
                         state_description += f"Error of previous action {i + 1}/{len(self.result)}: ...{error_str}\n"
         if self.state.screenshot:
