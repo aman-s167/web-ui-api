@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-import sys, os, asyncio, json
+import sys
+import os
+import asyncio
+import json
+
+# Ensure the parent directory is in the PYTHONPATH
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from src.agent.custom_agent import CustomAgent
@@ -29,6 +34,7 @@ async def main():
     )
     
     history = await agent.run(max_steps=10)
+    # Use model_dump() instead of dict() (Pydantic V2 compatible)
     print(json.dumps(history.model_dump(), indent=2))
 
 if __name__ == "__main__":
