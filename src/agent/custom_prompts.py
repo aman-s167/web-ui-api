@@ -114,7 +114,7 @@ class CustomSystemPrompt(SystemPrompt):
         Get the system prompt for the agent.
 
         Returns:
-            str: Formatted system prompt
+            SystemMessage: Formatted system prompt
         """
         AGENT_PROMPT = f"""You are a precise browser automation agent that interacts with websites through structured commands. Your role is to:
     1. Analyze the provided webpage elements and structure
@@ -142,16 +142,15 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
             max_error_length: int = 400,
             step_info: Optional[CustomAgentStepInfo] = None,
     ):
-        # Call the base initializer without passing include_attributes to avoid duplication.
+        # Do not pass include_attributes to the superclass initializer.
         super(CustomAgentMessagePrompt, self).__init__(
             state=state,
             result=result,
             max_error_length=max_error_length,
             step_info=step_info
         )
-        # Now, if include_attributes was provided, set it on the instance.
-        if include_attributes is not None:
-            self.include_attributes = include_attributes
+        # Assign include_attributes if provided.
+        self.include_attributes = include_attributes if include_attributes is not None else []
         self.actions = actions
 
     def get_user_message(self) -> HumanMessage:
@@ -210,9 +209,7 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
                     if result.error:
                         # only use last 300 characters of error
                         error = result.error[-self.max_error_length:]
-                        state_description += (
-                            f"Error of previous action {i + 1}/{len(self.result)}: ...{error}\n"
-                        )
+                        state_description += f"Error of previous action {i + 1}/{len(self.result)}: ...{error}\n"
 
         if self.state.screenshot:
             # Format message for vision model
