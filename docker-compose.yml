@@ -37,7 +37,7 @@ services:
       # LLM selection environment variables:
       - LLM_TYPE=${LLM_TYPE:-gemini}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-AIzaSyCCCoVrr42NNT9w0abgabwTUSiuR5qAqK0}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash-exp}
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
     restart: unless-stopped
