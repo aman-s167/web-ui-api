@@ -16,7 +16,7 @@ async def main():
     # Replace YOUR_GEMINI_API_KEY with your actual Gemini API key.
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.0-flash", 
-        google_api_key="YOUR_GEMINI_API_KEY"
+        google_api_key="AIzaSyCCCoVrr42NNT9w0abgabwTUSiuR5qAqK0"
     )
     
     controller = CustomController()
