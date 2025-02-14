@@ -1,7 +1,6 @@
 import pdb
 from typing import List, Optional
 from datetime import datetime
-import logging
 
 from browser_use.agent.prompts import SystemPrompt, AgentMessagePrompt
 from browser_use.agent.views import ActionResult, ActionModel
@@ -10,97 +9,82 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from .custom_views import CustomAgentStepInfo
 
-logger = logging.getLogger(__name__)
 
 class CustomSystemPrompt(SystemPrompt):
     def important_rules(self) -> str:
-        """
-        Returns the important rules for the agent.
-        """
         text = r"""
-1. RESPONSE FORMAT: Your final output MUST be a single valid JSON object exactly in the following format with no extra text. Every key under "current_state" must be present. If there is no value for a key, output an empty string (""). The JSON must exactly follow this structure:
-
-{
-  "current_state": {
-    "prev_action_evaluation": "<string>",
-    "important_contents": "<string>",
-    "task_progress": "<string>",
-    "future_plans": "<string>",
-    "thought": "<string>",
-    "summary": "<string>"
-  },
-  "action": [
-    { "action_name": { "param1": "value1", "param2": "value2" } },
-    // ... additional actions, if any
-  ]
-}
-
-Important:
-  - All keys inside "current_state" are required.
-  - If no data exists for a key, output an empty string ("").
-  - The "action" field must be an array (which may be empty).
-  
-2. ACTIONS: You may list multiple actions if needed, but only include valid actions as defined in your functions.
-3. ELEMENT INTERACTION: Use only the provided interactive elements with numeric indexes.
-4. NAVIGATION & ERROR HANDLING: Follow standard guidelines (handle popups, use scrolling, etc.).
-5. TASK COMPLETION: When all requirements are met, include a "Done" action in the list.
-6. VISUAL CONTEXT: Use provided visual data only as context. Do not include extra keys.
-7. FORM FILLING: Ensure to handle form fields correctly, including selecting suggestions if needed.
-8. ACTION SEQUENCING: List actions in the correct order. Only include as many as needed.
-
-Please ensure your response is exactly the JSON object as specified.
+    1. RESPONSE FORMAT: You must ALWAYS respond with valid JSON in this exact format:
+       {
+         "current_state": {
+           "prev_action_evaluation": "Success|Failed|Unknown - Analyze the current elements and the image to check if the previous goals/actions are successful as intended by the task. Ignore the action result. The website is the ground truth. Also mention if something unexpected happened like new suggestions in an input field. Shortly state why or why not. If you consider it to be 'Failed', reflect on it in your thought.",
+           "important_contents": "Output important contents closely related to the user's instruction on the current page. If none, output an empty string.",
+           "task_progress": "Summarize the completed steps. List each completed item (e.g., '1. Input username. 2. Input password. 3. Click confirm button') as a string.",
+           "future_plans": "Outline the remaining steps required to complete the task (as a string).",
+           "thought": "Reflect on what has been done and what needs to be done next. If a previous action failed, include your reflection here.",
+           "summary": "Provide a brief description for the next operations based on your thought."
+         },
+         "action": [
+           * actions in sequence; each action must be formatted as: {action_name: action_params} *
+         ]
+       }
+    2. ACTIONS: You can specify multiple actions to be executed in sequence.
+       Common sequences include:
+       - Form filling: [
+           {"input_text": {"index": 1, "text": "username"}},
+           {"input_text": {"index": 2, "text": "password"}},
+           {"click_element": {"index": 3}}
+         ]
+       - Navigation: [
+           {"go_to_url": {"url": "https://example.com"}},
+           {"extract_page_content": {}}
+         ]
+    3. ELEMENT INTERACTION:
+       - Only use element indexes provided.
+       - Only elements with numeric indexes are interactive.
+       - Elements marked with "_[:]" are for context only.
+    4. NAVIGATION & ERROR HANDLING:
+       - Use alternative methods if no suitable elements are available.
+       - Handle popups/cookies appropriately.
+    5. TASK COMPLETION:
+       - If all requirements are met, output the Done action to terminate the process.
+       - Do not hallucinate actions.
+       - Always verify fulfillment by checking the page content.
+    6. VISUAL CONTEXT:
+       - When an image is provided, use it to understand the page layout and element positions.
+    7. FORM FILLING:
+       - If suggestions appear under a filled input, select the correct suggestion.
+    8. ACTION SEQUENCING:
+       - Execute actions in the order they are listed.
+       - Only include actions until you expect a page change.
+       - Use up to {max_actions_per_step} actions per sequence.
         """
-        text += f"\n   - use maximum {self.max_actions_per_step} actions per sequence"
+        text += f"   - use maximum {self.max_actions_per_step} actions per sequence"
         return text
 
     def input_format(self) -> str:
         return """
-INPUT STRUCTURE:
-1. Task: The user's instructions.
-2. Hints(Optional): Any additional hints.
-3. Memory: Previously recorded content (if any).
-4. Current URL: The current webpage URL.
-5. Available Tabs: A list of open browser tabs.
-6. Interactive Elements: Provided as a list in the following format:
-   index[:]<element_type>element_text</element_type>
-   - index: Numeric identifier.
-   - element_type: e.g., button, input.
-   - element_text: Visible text.
-Example:
-33[:]<button>Submit Form</button>
-_[:] Non-interactive text.
-Notes:
-- Only numeric-indexed elements are interactive.
+    INPUT STRUCTURE:
+    1. Task: The user's instruction.
+    2. Hints (Optional): Additional hints.
+    3. Memory: Important content recorded from previous steps.
+    4. Current URL: The current webpage URL.
+    5. Available Tabs: List of open browser tabs.
+    6. Interactive Elements: A list formatted as:
+       index[:]<element_type>element_text</element_type>
+       (Example: 33[:]<button>Submit Form</button>; _[:] indicates non-interactive elements.)
         """
 
     def get_system_message(self) -> SystemMessage:
-        AGENT_PROMPT = f"""You are a precise browser automation agent that interacts with websites through structured commands. Your role is to:
-1. Analyze the provided webpage elements and structure.
-2. Plan a sequence of actions to accomplish the given task.
-3. Your final output MUST be a valid JSON object exactly following this schema:
-
-{{
-  "current_state": {{
-    "prev_action_evaluation": "<string>",
-    "important_contents": "<string>",
-    "task_progress": "<string>",
-    "future_plans": "<string>",
-    "thought": "<string>",
-    "summary": "<string>"
-  }},
-  "action": [
-    {{ "action_name": {{ "param1": "value1", "param2": "value2" }} }},
-    ...
-  ]
-}}
-
-Do not include any additional keys or text. If no information exists for a field, output an empty string ("").
-
-{self.input_format()}
-{self.important_rules()}
-Functions:
-{self.default_action_description}
-Remember: Your response must be exactly the JSON object in the format above."""
+        AGENT_PROMPT = f"""You are a precise browser automation agent. Your role is to:
+    1. Analyze the provided webpage elements.
+    2. Plan a sequence of actions to accomplish the task.
+    3. Return a valid JSON response as specified, containing your planned actions and state assessment.
+    {self.input_format()}
+    {self.important_rules()}
+    Functions:
+    {self.default_action_description}
+    Respond strictly in JSON.
+        """
         return SystemMessage(content=AGENT_PROMPT)
 
 
@@ -108,7 +92,7 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
     def __init__(self, *args, actions: Optional[List[ActionModel]] = None, **kwargs):
         # Remove any 'include_attributes' from kwargs.
         kwargs.pop('include_attributes', None)
-        # Call the base initializer with include_attributes explicitly set to an empty list.
+        # Initialize with include_attributes explicitly set to an empty list.
         super().__init__(
             state=kwargs.get('state'),
             result=kwargs.get('result'),
@@ -127,15 +111,13 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
         time_str = datetime.now().strftime("%Y-%m-%d %H:%M")
         step_info_description += f"Current date and time: {time_str}"
         elements_text = self.state.element_tree.clickable_elements_to_string(include_attributes=self.include_attributes)
-        has_content_above = (self.state.pixels_above or 0) > 0
-        has_content_below = (self.state.pixels_below or 0) > 0
-        if elements_text != "":
-            if has_content_above:
-                elements_text = f"... {self.state.pixels_above} pixels above - scroll or extract content to see more ...\n{elements_text}"
+        if elements_text:
+            if self.state.pixels_above:
+                elements_text = f"... {self.state.pixels_above} pixels above - scroll to see more...\n{elements_text}"
             else:
                 elements_text = f"[Start of page]\n{elements_text}"
-            if has_content_below:
-                elements_text = f"{elements_text}\n... {self.state.pixels_below} pixels below - scroll or extract content to see more ..."
+            if self.state.pixels_below:
+                elements_text = f"{elements_text}\n... {self.state.pixels_below} pixels below - scroll to see more..."
             else:
                 elements_text = f"{elements_text}\n[End of page]"
         else:
@@ -143,28 +125,38 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
         state_description = f"""
 {step_info_description}
 1. Task: {self.step_info.task}.
-2. Hints(Optional):
+2. Hints (Optional):
 {self.step_info.add_infos}
 3. Memory:
 {self.step_info.memory}
-4. Current url: {self.state.url}
+4. Current URL: {self.state.url}
 5. Available tabs:
 {self.state.tabs}
 6. Interactive elements:
 {elements_text}
         """
         if self.actions and self.result:
-            state_description += "\n **Previous Actions** \n"
-            state_description += f"Previous step: {self.step_info.step_number-1}/{self.step_info.max_steps} \n"
-            for i, result in enumerate(self.result):
+            state_description += f"\n **Previous Actions** \nPrevious step: {self.step_info.step_number-1}/{self.step_info.max_steps}\n"
+            def flatten_and_stringify(err):
+                flat = []
+                if isinstance(err, list):
+                    for item in err:
+                        flat.extend(flatten_and_stringify(item))
+                elif isinstance(err, dict):
+                    flat.append(str(err))
+                else:
+                    flat.append(str(err))
+                return flat
+            for i, res in enumerate(self.result):
                 action = self.actions[i]
-                state_description += f"Previous action {i + 1}/{len(self.result)}: {str(action.model_dump_json(exclude_unset=True))}\n"
-                if result.include_in_memory:
-                    if result.extracted_content:
-                        state_description += f"Result of previous action {i + 1}/{len(self.result)}: {str(result.extracted_content)}\n"
-                    if result.error:
-                        error_str = str(result.error)
-                        state_description += f"Error of previous action {i + 1}/{len(self.result)}: ...{error_str}\n"
+                state_description += f"Previous action {i+1}/{len(self.result)}: {action.model_dump_json(exclude_unset=True)}\n"
+                if res.include_in_memory:
+                    if res.extracted_content:
+                        state_description += f"Result of previous action {i+1}/{len(self.result)}: {res.extracted_content}\n"
+                    if res.error:
+                        error_list = flatten_and_stringify(res.error)
+                        error_str = ", ".join(error_list)[-self.max_error_length:]
+                        state_description += f"Error of previous action {i+1}/{len(self.result)}: {error_str}\n"
         if self.state.screenshot:
             return HumanMessage(
                 content=[
