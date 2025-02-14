@@ -57,6 +57,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install Flask for our API endpoints
+RUN pip install flask
+
 # Install Playwright and browsers with system dependencies
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN playwright install --with-deps chromium
@@ -81,6 +84,9 @@ ENV RESOLUTION_HEIGHT=1080
 RUN mkdir -p /var/log/supervisor
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-EXPOSE 7788 6080 5901
+# Expose the original ports and port 5000 for the API
+EXPOSE 7788 6080 5901 5000
 
+# Run supervisord to manage processes.
+# Make sure that your supervisord.conf includes a program entry to run "python api.py" for your API server.
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
