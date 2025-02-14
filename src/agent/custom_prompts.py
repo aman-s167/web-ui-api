@@ -134,20 +134,24 @@ class CustomSystemPrompt(SystemPrompt):
 
 class CustomAgentMessagePrompt(AgentMessagePrompt):
     def __init__(
-            self,
-            state: BrowserState,
-            actions: Optional[List[ActionModel]] = None,
-            result: Optional[List[ActionResult]] = None,
-            max_error_length: int = 400,
-            step_info: Optional[CustomAgentStepInfo] = None,
+        self,
+        state: BrowserState,
+        actions: Optional[List[ActionModel]] = None,
+        result: Optional[List[ActionResult]] = None,
+        max_error_length: int = 400,
+        step_info: Optional[CustomAgentStepInfo] = None,
+        **kwargs
     ):
-        # Call the base initializer with explicit keyword arguments.
+        # Remove any passed 'include_attributes' from kwargs.
+        kwargs.pop('include_attributes', None)
+        # Call the base initializer with include_attributes explicitly set to an empty list.
         super().__init__(
             state=state,
             result=result,
-            include_attributes=[],  # Force include_attributes to be an empty list
+            include_attributes=[],  # Force an empty list
             max_error_length=max_error_length,
-            step_info=step_info
+            step_info=step_info,
+            **kwargs
         )
         self.actions = actions
 
