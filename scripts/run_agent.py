@@ -29,7 +29,7 @@ async def main():
     )
     
     history = await agent.run(max_steps=10)
-    print(json.dumps(history.dict(), indent=2))
+    print(json.dumps(history.model_dump(), indent=2))
 
 if __name__ == "__main__":
     asyncio.run(main())
