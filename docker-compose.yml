@@ -11,6 +11,7 @@ services:
       - "6080:6080"  # noVNC web interface
       - "5901:5901"  # VNC port
       - "9222:9222"  # Chrome remote debugging port
+      - "5000:5000"  # API Endpoints
     environment:
       - OPENAI_ENDPOINT=${OPENAI_ENDPOINT:-https://api.openai.com/v1}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
