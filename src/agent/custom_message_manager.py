@@ -72,23 +72,21 @@ class CustomMessageManager(MessageManager):
             diff = self.history.total_tokens - self.max_input_tokens
         
     def add_state_message(
-            self,
-            state: BrowserState,
-            actions: Optional[List[ActionModel]] = None,
-            result: Optional[List[ActionResult]] = None,
-            step_info: Optional[AgentStepInfo] = None,
-    ) -> None:
-        """Add browser state as human message"""
-        # otherwise add state message and result to next message (which will not stay in memory)
-        state_message = self.agent_prompt_class(
-            state,
-            actions,
-            result,
-            include_attributes=self.include_attributes,
-            max_error_length=self.max_error_length,
-            step_info=step_info,
-        ).get_user_message()
-        self._add_message_with_tokens(state_message)
+        self,
+        state: BrowserState,
+        actions: Optional[List[ActionModel]] = None,
+        result: Optional[List[ActionResult]] = None,
+        step_info: Optional[AgentStepInfo] = None,
+) -> None:
+    # Otherwise add state message and result to next message (which will not stay in memory)
+    state_message = self.agent_prompt_class(
+        state,
+        actions,
+        result,
+        max_error_length=self.max_error_length,
+        step_info=step_info,
+    ).get_user_message()
+    self._add_message_with_tokens(state_message)
     
     def _count_text_tokens(self, text: str) -> int:
         if isinstance(self.llm, (ChatOpenAI, ChatAnthropic, DeepSeekR1ChatOpenAI)):
