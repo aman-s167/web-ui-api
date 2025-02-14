@@ -133,22 +133,14 @@ class CustomSystemPrompt(SystemPrompt):
 
 
 class CustomAgentMessagePrompt(AgentMessagePrompt):
-    def __init__(
-            self,
-            state: BrowserState,
-            actions: Optional[List[ActionModel]] = None,
-            result: Optional[List[ActionResult]] = None,
-            max_error_length: int = 400,
-            step_info: Optional[CustomAgentStepInfo] = None,
-    ):
-        # Call the base initializer without passing include_attributes.
-        super(CustomAgentMessagePrompt, self).__init__(
-            state=state,
-            result=result,
-            max_error_length=max_error_length,
-            step_info=step_info
-        )
+    def __init__(self, *args, actions: Optional[List[ActionModel]] = None, **kwargs):
+        # Remove 'include_attributes' if passed in kwargs.
+        kwargs.pop('include_attributes', None)
+        super(CustomAgentMessagePrompt, self).__init__(*args, **kwargs)
         self.actions = actions
+        # Optionally, if the base class doesn't set include_attributes, you can default it here:
+        if not hasattr(self, 'include_attributes'):
+            self.include_attributes = []
 
     def get_user_message(self) -> HumanMessage:
         if self.step_info:
@@ -159,7 +151,6 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
         time_str = datetime.now().strftime("%Y-%m-%d %H:%M")
         step_info_description += f"Current date and time: {time_str}"
 
-        # Use the include_attributes from the base class (if any).
         elements_text = self.state.element_tree.clickable_elements_to_string(include_attributes=self.include_attributes)
 
         has_content_above = (self.state.pixels_above or 0) > 0
@@ -205,12 +196,10 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
                     if result.extracted_content:
                         state_description += f"Result of previous action {i + 1}/{len(self.result)}: {result.extracted_content}\n"
                     if result.error:
-                        # only use last 300 characters of error
                         error = result.error[-self.max_error_length:]
                         state_description += f"Error of previous action {i + 1}/{len(self.result)}: ...{error}\n"
 
         if self.state.screenshot:
-            # Format message for vision model
             return HumanMessage(
                 content=[
                     {"type": "text", "text": state_description},
