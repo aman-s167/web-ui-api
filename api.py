@@ -5,9 +5,9 @@ from flask import Flask, request, jsonify
 from src.agent.custom_agent import CustomAgent
 from langchain_openai import ChatOpenAI
 
-# Attempt to import your Gemini adapter. Adjust the module and class names as necessary.
+# Import the GeminiLLM wrapper from our newly created module.
 try:
-    from gemini_llm import GeminiLLM
+    from src.llm.gemini_llm import GeminiLLM
 except ImportError:
     GeminiLLM = None
 
@@ -17,7 +17,7 @@ def get_llm_instance():
         if GeminiLLM is None:
             raise ImportError("GeminiLLM module is not installed or imported properly.")
         gemini_api_key = os.getenv("GEMINI_API_KEY")
-        gemini_model = os.getenv("GEMINI_MODEL", "gemini-default")  # Set your default Gemini model here
+        gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")  # Default to gemini-2.0-flash (adjust as needed)
         if not gemini_api_key:
             raise ValueError("GEMINI_API_KEY must be set when LLM_TYPE is 'gemini'.")
         return GeminiLLM(api_key=gemini_api_key, model_name=gemini_model)
