@@ -1,23 +1,22 @@
 #!/usr/bin/env python3
-import sys, os
+import sys, os, asyncio, json
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-import json
 from src.agent.custom_agent import CustomAgent
 from src.controller.custom_controller import CustomController
 from langchain_google_genai import ChatGoogleGenerativeAI  # Gemini via Google Generative AI
 
-def main():
+async def main():
     if len(sys.argv) < 2:
         print("Usage: run_agent.py 'Your prompt here'")
         sys.exit(1)
     prompt = sys.argv[1]
     
     # Initialize the Gemini model.
-    # Replace YOUR_GEMINI_API_KEY with your actual Gemini API key
+    # Replace YOUR_GEMINI_API_KEY with your actual Gemini API key.
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.0-flash", 
-        google_api_key="AIzaSyCCCoVrr42NNT9w0abgabwTUSiuR5qAqK0"
+        google_api_key="YOUR_GEMINI_API_KEY"
     )
     
     controller = CustomController()
@@ -26,11 +25,11 @@ def main():
         task=prompt,
         llm=llm,
         controller=controller,
-        use_vision=False  # Set to True if needed
+        use_vision=False  # Adjust if you need vision
     )
     
-    history = agent.run(max_steps=10)
+    history = await agent.run(max_steps=10)
     print(json.dumps(history.dict(), indent=2))
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
