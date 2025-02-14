@@ -144,8 +144,11 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
     ):
         if include_attributes is None:
             include_attributes = []
-        # Pass arguments positionally in the order expected by the base class.
-        super(CustomAgentMessagePrompt, self).__init__(state, result, include_attributes, max_error_length, step_info)
+        # Pass arguments positionally in the order expected by the base class,
+        # but force include_attributes as an empty list.
+        super(CustomAgentMessagePrompt, self).__init__(state, result, [], max_error_length, step_info)
+        # Override the instance attribute with the desired value.
+        self.include_attributes = include_attributes
         self.actions = actions
 
     def get_user_message(self) -> HumanMessage:
