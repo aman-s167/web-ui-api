@@ -12,18 +12,20 @@ from .custom_views import CustomAgentStepInfo
 
 def flatten_error(err):
     """
-    Recursively flatten nested lists, tuples, and dictionaries,
-    converting all items to strings.
+    Iteratively flatten nested lists and tuples, converting all items to strings.
     """
-    flat = []
-    if isinstance(err, (list, tuple)):
-        for item in err:
-            flat.extend(flatten_error(item))
-    elif isinstance(err, dict):
-        flat.append(str(err))
-    else:
-        flat.append(str(err))
-    return flat
+    result = []
+    stack = [err]
+    while stack:
+        current = stack.pop(0)
+        if isinstance(current, (list, tuple)):
+            # Extend the stack with items from the current list/tuple
+            stack = list(current) + stack
+        elif isinstance(current, dict):
+            result.append(str(current))
+        else:
+            result.append(str(current))
+    return result
 
 
 class CustomSystemPrompt(SystemPrompt):
