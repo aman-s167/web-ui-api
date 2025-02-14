@@ -51,10 +51,10 @@ class CustomMessageManager(MessageManager):
             include_attributes=include_attributes,
             max_error_length=max_error_length,
             max_actions_per_step=max_actions_per_step,
-            message_context=message_context
+            message_context=message_context,
         )
         self.agent_prompt_class = agent_prompt_class
-        # Custom: Move Task info to state_message
+        # Custom: Initialize history with system prompt and optional context.
         self.history = MessageHistory()
         self._add_message_with_tokens(self.system_prompt)
 
@@ -63,7 +63,7 @@ class CustomMessageManager(MessageManager):
             self._add_message_with_tokens(context_message)
 
     def cut_messages(self):
-        """Get current message list, potentially trimmed to max tokens"""
+        """Trim the message history to keep it under the maximum input tokens."""
         diff = self.history.total_tokens - self.max_input_tokens
         min_message_len = 2 if self.message_context is not None else 1
 
@@ -78,8 +78,7 @@ class CustomMessageManager(MessageManager):
         result: Optional[List[ActionResult]] = None,
         step_info: Optional[AgentStepInfo] = None,
     ) -> None:
-        """Add browser state as human message"""
-        # Remove 'actions' from the parameters since our prompt class doesn't expect it.
+        """Add the browser state as a human message. Note that we do not pass 'actions' since our prompt class doesn't expect it."""
         state_message = self.agent_prompt_class(
             state=state,
             result=result,
@@ -93,13 +92,13 @@ class CustomMessageManager(MessageManager):
             try:
                 tokens = self.llm.get_num_tokens(text)
             except Exception:
-                tokens = len(text) // self.estimated_characters_per_token  # Rough estimate if no tokenizer available
+                tokens = len(text) // self.estimated_characters_per_token  # rough estimate if tokenizer is unavailable
         else:
-            tokens = len(text) // self.estimated_characters_per_token  # Rough estimate if no tokenizer available
+            tokens = len(text) // self.estimated_characters_per_token  # rough estimate
         return tokens
 
     def _remove_state_message_by_index(self, remove_ind=-1) -> None:
-        """Remove last state message from history"""
+        """Remove the last state message from history based on the provided index."""
         i = len(self.history.messages) - 1
         remove_cnt = 0
         while i >= 0:
