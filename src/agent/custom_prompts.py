@@ -133,27 +133,13 @@ class CustomSystemPrompt(SystemPrompt):
 
 
 class CustomAgentMessagePrompt(AgentMessagePrompt):
-    def __init__(
-        self,
-        state: BrowserState,
-        actions: Optional[List[ActionModel]] = None,
-        result: Optional[List[ActionResult]] = None,
-        max_error_length: int = 400,
-        step_info: Optional[CustomAgentStepInfo] = None,
-        **kwargs
-    ):
-        # Remove any passed 'include_attributes' from kwargs.
+    def __init__(self, *args, actions: Optional[List[ActionModel]] = None, **kwargs):
+        # Remove any 'include_attributes' from kwargs.
         kwargs.pop('include_attributes', None)
         # Call the base initializer with include_attributes explicitly set to an empty list.
-        super().__init__(
-            state=state,
-            result=result,
-            include_attributes=[],  # Force an empty list
-            max_error_length=max_error_length,
-            step_info=step_info,
-            **kwargs
-        )
+        super().__init__(state=kwargs.get('state'), result=kwargs.get('result'), include_attributes=[], max_error_length=kwargs.get('max_error_length', 400), step_info=kwargs.get('step_info'))
         self.actions = actions
+        self.include_attributes = []  # Force an empty list
 
     def get_user_message(self) -> HumanMessage:
         if self.step_info:
@@ -209,8 +195,13 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
                     if result.extracted_content:
                         state_description += f"Result of previous action {i + 1}/{len(self.result)}: {result.extracted_content}\n"
                     if result.error:
-                        error = result.error[-self.max_error_length:]
-                        state_description += f"Error of previous action {i + 1}/{len(self.result)}: ...{error}\n"
+                        # Convert error to string if it's a list.
+                        if isinstance(result.error, list):
+                            error_str = ", ".join(map(str, result.error))
+                        else:
+                            error_str = str(result.error)
+                        error_str = error_str[-self.max_error_length:]
+                        state_description += f"Error of previous action {i + 1}/{len(self.result)}: ...{error_str}\n"
 
         if self.state.screenshot:
             return HumanMessage(
