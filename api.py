@@ -5,7 +5,7 @@ from flask import Flask, request, jsonify
 
 # IMPORTANT: Adjust the following import if your CustomAgent is in a different location.
 # Here we assume that CustomAgent is defined in a file inside the project.
-from from src.agent.custom_agent import CustomAgent
+from src.agent.custom_agent import CustomAgent
 from langchain_openai import ChatOpenAI
 
 # Helper function to run the agent (agent endpoint)
