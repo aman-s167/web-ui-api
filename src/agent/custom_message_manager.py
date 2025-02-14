@@ -54,7 +54,7 @@ class CustomMessageManager(MessageManager):
             message_context=message_context
         )
         self.agent_prompt_class = agent_prompt_class
-        # Custom: Move task info to state message
+        # Custom: Move Task info to state_message
         self.history = MessageHistory()
         self._add_message_with_tokens(self.system_prompt)
 
@@ -79,9 +79,9 @@ class CustomMessageManager(MessageManager):
         step_info: Optional[AgentStepInfo] = None,
     ) -> None:
         """Add browser state as human message"""
+        # Remove 'actions' from the parameters since our prompt class doesn't expect it.
         state_message = self.agent_prompt_class(
             state=state,
-            actions=actions,
             result=result,
             max_error_length=self.max_error_length,
             step_info=step_info,
