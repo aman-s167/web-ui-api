@@ -22,9 +22,9 @@ from browser_use.browser.context import BrowserContext
 from browser_use.browser.views import BrowserStateHistory
 from browser_use.controller.service import Controller
 from browser_use.telemetry.views import (
-	AgentEndTelemetryEvent,
-	AgentRunTelemetryEvent,
-	AgentStepTelemetryEvent,
+    AgentEndTelemetryEvent,
+    AgentRunTelemetryEvent,
+    AgentStepTelemetryEvent,
 )
 from browser_use.utils import time_execution_async
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -208,6 +208,22 @@ class CustomAgent(Agent):
         ai_content = ai_content.replace("```json", "").replace("```", "")
         ai_content = repair_json(ai_content)
         parsed_json = json.loads(ai_content)
+        
+        # Ensure required keys exist in current_state.
+        required_keys = [
+            "prev_action_evaluation", 
+            "important_contents", 
+            "task_progress", 
+            "future_plans", 
+            "thought", 
+            "summary"
+        ]
+        if "current_state" not in parsed_json or not isinstance(parsed_json["current_state"], dict):
+            parsed_json["current_state"] = {}
+        for key in required_keys:
+            if key not in parsed_json["current_state"]:
+                parsed_json["current_state"][key] = ""
+
         parsed: AgentOutput = self.AgentOutput(**parsed_json)
         
         if parsed is None:
@@ -253,19 +269,17 @@ class CustomAgent(Agent):
                 actions, self.browser_context
             )
             if len(result) != len(actions):
-                # I think something changes, such information should let LLM know
                 for ri in range(len(result), len(actions)):
-                    result.append(ActionResult(extracted_content=None,
-                                                include_in_memory=True,
-                                                error=f"{actions[ri].model_dump_json(exclude_unset=True)} is Failed to execute. \
-                                                    Something new appeared after action {actions[len(result) - 1].model_dump_json(exclude_unset=True)}",
-                                                is_done=False))
+                    result.append(ActionResult(
+                        extracted_content=None,
+                        include_in_memory=True,
+                        error=f"{actions[ri].model_dump_json(exclude_unset=True)} failed to execute. Something new appeared after action {actions[len(result) - 1].model_dump_json(exclude_unset=True)}",
+                        is_done=False
+                    ))
             if len(actions) == 0:
-                # TODO: fix no action case
                 result = [ActionResult(is_done=True, extracted_content=step_info.memory, include_in_memory=True)]
             for ret_ in result:
                 if "Extracted page" in ret_.extracted_content:
-                    # record every extracted page
                     self.extracted_content += ret_.extracted_content
             self._last_result = result
             self._last_actions = actions
@@ -303,7 +317,6 @@ class CustomAgent(Agent):
         try:
             self._log_agent_run()
 
-            # Execute initial actions if provided
             if self.initial_actions:
                 result = await self.controller.multi_act(self.initial_actions, self.browser_context, check_for_new_elements=False)
                 self._last_result = result
@@ -319,13 +332,11 @@ class CustomAgent(Agent):
             )
 
             for step in range(max_steps):
-                # 1) Check if stop requested
                 if self.agent_state and self.agent_state.is_stop_requested():
                     logger.info("🛑 Stop requested by user")
                     self._create_stop_history_item()
                     break
 
-                # 2) Store last valid state before step
                 if self.browser_context and self.agent_state:
                     state = await self.browser_context.get_state(use_vision=self.use_vision)
                     self.agent_state.set_last_valid_state(state)
@@ -333,16 +344,12 @@ class CustomAgent(Agent):
                 if self._too_many_failures():
                     break
 
-                # 3) Do the step
                 await self.step(step_info)
 
                 if self.history.is_done():
-                    if (
-                            self.validate_output and step < max_steps - 1
-                    ):  # if last step, we dont need to validate
+                    if self.validate_output and step < max_steps - 1:
                         if not await self._validate_output():
                             continue
-
                     logger.info("✅ Task completed successfully")
                     break
             else:
@@ -381,12 +388,10 @@ class CustomAgent(Agent):
     def _create_stop_history_item(self):
         """Create a history item for when the agent is stopped."""
         try:
-            # Attempt to retrieve the last valid state from agent_state
             state = None
             if self.agent_state:
                 last_state = self.agent_state.get_last_valid_state()
                 if last_state:
-                    # Convert to BrowserStateHistory
                     state = BrowserStateHistory(
                         url=getattr(last_state, 'url', ""),
                         title=getattr(last_state, 'title', ""),
@@ -399,7 +404,6 @@ class CustomAgent(Agent):
             else:
                 state = self._create_empty_state()
 
-            # Create a final item in the agent history indicating done
             stop_history = AgentHistory(
                 model_output=None,
                 state=state,
@@ -409,7 +413,6 @@ class CustomAgent(Agent):
 
         except Exception as e:
             logger.error(f"Error creating stop history item: {e}")
-            # Create empty state as fallback
             state = self._create_empty_state()
             stop_history = AgentHistory(
                 model_output=None,
@@ -455,21 +458,16 @@ class CustomAgent(Agent):
             return
 
         images = []
-        # if history is empty or first screenshot is None, we can't create a gif
         if not self.history.history or not self.history.history[0].state.screenshot:
             logger.warning('No history or first screenshot to create GIF from')
             return
 
-        # Try to load nicer fonts
         try:
-            # Try different font options in order of preference
             font_options = ['Helvetica', 'Arial', 'DejaVuSans', 'Verdana']
             font_loaded = False
-
             for font_name in font_options:
                 try:
                     if platform.system() == 'Windows':
-                        # Need to specify the abs font path on Windows
                         font_name = os.path.join(os.getenv('WIN_FONT_DIR', 'C:\\Windows\\Fonts'), font_name + '.ttf')
                     regular_font = ImageFont.truetype(font_name, font_size)
                     title_font = ImageFont.truetype(font_name, title_font_size)
@@ -478,22 +476,17 @@ class CustomAgent(Agent):
                     break
                 except OSError:
                     continue
-
             if not font_loaded:
                 raise OSError('No preferred fonts found')
-
         except OSError:
             regular_font = ImageFont.load_default()
             title_font = ImageFont.load_default()
-
             goal_font = regular_font
 
-        # Load logo if requested
         logo = None
         if show_logo:
             try:
                 logo = Image.open('./static/browser-use.png')
-                # Resize logo to be small (e.g., 40px height)
                 logo_height = 150
                 aspect_ratio = logo.width / logo.height
                 logo_width = int(logo_height * aspect_ratio)
@@ -501,7 +494,6 @@ class CustomAgent(Agent):
             except Exception as e:
                 logger.warning(f'Could not load logo: {e}')
 
-        # Create task frame if requested
         if show_task and self.task:
             task_frame = self._create_task_frame(
                 self.task,
@@ -513,15 +505,11 @@ class CustomAgent(Agent):
             )
             images.append(task_frame)
 
-        # Process each history item
         for i, item in enumerate(self.history.history, 1):
             if not item.state.screenshot:
                 continue
-
-            # Convert base64 screenshot to PIL Image
             img_data = base64.b64decode(item.state.screenshot)
             image = Image.open(io.BytesIO(img_data))
-
             if show_goals and item.model_output:
                 image = self._add_overlay_to_image(
                     image=image,
@@ -532,11 +520,9 @@ class CustomAgent(Agent):
                     margin=margin,
                     logo=logo,
                 )
-
             images.append(image)
 
         if images:
-            # Save the GIF
             images[0].save(
                 output_path,
                 save_all=True,
