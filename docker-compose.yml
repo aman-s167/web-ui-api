@@ -34,6 +34,10 @@ services:
       - VNC_PASSWORD=${VNC_PASSWORD:-vncpassword}
       - CHROME_DEBUGGING_PORT=9222
       - CHROME_DEBUGGING_HOST=localhost
+      # LLM selection environment variables:
+      - LLM_TYPE=${LLM_TYPE:-gemini}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-AIzaSyCCCoVrr42NNT9w0abgabwTUSiuR5qAqK0}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1}
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
     restart: unless-stopped
