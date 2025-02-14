@@ -133,23 +133,23 @@ class CustomSystemPrompt(SystemPrompt):
 
 
 class CustomAgentMessagePrompt(AgentMessagePrompt):
-    def __init__(self, *args, actions: Optional[List[ActionModel]] = None, **kwargs):
-        # Remove any 'include_attributes' from kwargs.
-        kwargs.pop('include_attributes', None)
-        # Convert args to list and ensure the length is exactly what the base class expects.
-        # The base class signature is assumed to be (state, result, include_attributes, max_error_length, step_info).
-        # We force include_attributes to be an empty list.
-        if len(args) >= 2:
-            state = args[0]
-            result = args[1]
-        else:
-            raise ValueError("Insufficient positional arguments; expected at least state and result.")
-        # Determine max_error_length and step_info if provided
-        max_error_length = kwargs.get('max_error_length', 400)
-        step_info = kwargs.get('step_info', None)
-        super(CustomAgentMessagePrompt, self).__init__(state, result, [], max_error_length, step_info)
+    def __init__(
+            self,
+            state: BrowserState,
+            actions: Optional[List[ActionModel]] = None,
+            result: Optional[List[ActionResult]] = None,
+            max_error_length: int = 400,
+            step_info: Optional[CustomAgentStepInfo] = None,
+    ):
+        # Call the base initializer with explicit keyword arguments.
+        super().__init__(
+            state=state,
+            result=result,
+            include_attributes=[],  # Force include_attributes to be an empty list
+            max_error_length=max_error_length,
+            step_info=step_info
+        )
         self.actions = actions
-        self.include_attributes = []  # Force include_attributes to an empty list
 
     def get_user_message(self) -> HumanMessage:
         if self.step_info:
