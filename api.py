@@ -1,48 +1,33 @@
 import os
 import asyncio
-import json
 from flask import Flask, request, jsonify
 
-# Hypothetical imports:
-# If using Gemini, import GeminiLLM from your custom module.
-# Otherwise, import ChatOpenAI for OpenAI.
-LLM_TYPE = os.getenv("LLM_TYPE", "openai").lower()
-
-if LLM_TYPE == "gemini":
-    # Ensure you have a Gemini adapter module. Replace with the actual implementation.
-    from my_gemini_module import GeminiLLM
-    # Use the provided Gemini API key and model.
-    gemini_api_key = os.getenv("GEMINI_API_KEY")
-    # Optionally, allow setting the Gemini model via an environment variable.
-    gemini_model = os.getenv("GEMINI_MODEL", "gemini-1")  # Default Gemini model (adjust as needed)
-    llm_class = GeminiLLM
-    llm_kwargs = {"api_key": gemini_api_key, "model_name": gemini_model}
-else:
-    # Default to OpenAI's ChatOpenAI adapter
-    from langchain_openai import ChatOpenAI
-    openai_api_key = os.getenv("OPENAI_API_KEY")
-    # Optionally, allow setting the OpenAI model via an environment variable.
-    openai_model = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
-    llm_class = ChatOpenAI
-    llm_kwargs = {"api_key": openai_api_key, "model_name": openai_model}
-
-# Instantiate the LLM
-llm = llm_class(**llm_kwargs)
-
-# Continue with your agent code...
 from src.agent.custom_agent import CustomAgent
+from langchain_openai import ChatOpenAI
+
+# Attempt to import your Gemini adapter. Adjust the module and class names as necessary.
+try:
+    from gemini_llm import GeminiLLM
+except ImportError:
+    GeminiLLM = None
+
+def get_llm_instance():
+    llm_type = os.getenv("LLM_TYPE", "openai").lower()
+    if llm_type == "gemini":
+        if GeminiLLM is None:
+            raise ImportError("GeminiLLM module is not installed or imported properly.")
+        gemini_api_key = os.getenv("GEMINI_API_KEY")
+        gemini_model = os.getenv("GEMINI_MODEL", "gemini-default")  # Set your default Gemini model here
+        if not gemini_api_key:
+            raise ValueError("GEMINI_API_KEY must be set when LLM_TYPE is 'gemini'.")
+        return GeminiLLM(api_key=gemini_api_key, model_name=gemini_model)
+    else:
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+        if not openai_api_key:
+            raise ValueError("OPENAI_API_KEY must be set when using OpenAI LLM.")
+        return ChatOpenAI(api_key=openai_api_key, model_name="gpt-3.5-turbo")
 
 app = Flask(__name__)
-
-async def run_agent(prompt: str):
-    agent = CustomAgent(task=prompt, llm=llm)
-    history = await agent.run(max_steps=10)
-    return {"history": str(history)}
-
-async def run_deep_research(prompt: str):
-    agent = CustomAgent(task=prompt, llm=llm)
-    history = await agent.run(max_steps=10)
-    return {"history": str(history)}
 
 @app.route('/api/agent', methods=['POST'])
 def api_agent():
@@ -52,8 +37,10 @@ def api_agent():
 
     prompt = data['prompt']
     try:
-        result = asyncio.run(run_agent(prompt))
-        return jsonify({'result': result})
+        llm = get_llm_instance()
+        agent = CustomAgent(task=prompt, llm=llm)
+        history = asyncio.run(agent.run(max_steps=10))
+        return jsonify({'result': {"history": str(history)}})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -65,8 +52,10 @@ def api_deep_research():
 
     prompt = data['prompt']
     try:
-        result = asyncio.run(run_deep_research(prompt))
-        return jsonify({'result': result})
+        llm = get_llm_instance()
+        agent = CustomAgent(task=prompt, llm=llm)
+        history = asyncio.run(agent.run(max_steps=10))
+        return jsonify({'result': {"history": str(history)}})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
