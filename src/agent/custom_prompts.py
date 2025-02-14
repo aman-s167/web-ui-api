@@ -142,8 +142,12 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
             max_error_length: int = 400,
             step_info: Optional[CustomAgentStepInfo] = None,
     ):
-        # Pass parameters positionally to the base class initializer.
-        super(CustomAgentMessagePrompt, self).__init__(state, result, include_attributes, max_error_length, step_info)
+        # Call the base initializer WITHOUT passing include_attributes.
+        super(CustomAgentMessagePrompt, self).__init__(
+            state, result, max_error_length=max_error_length, step_info=step_info
+        )
+        # Now, assign include_attributes to this instance.
+        self.include_attributes = include_attributes if include_attributes is not None else []
         self.actions = actions
 
     def get_user_message(self) -> HumanMessage:
