@@ -10,6 +10,21 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from .custom_views import CustomAgentStepInfo
 
 
+def flatten_error(err):
+    """
+    Recursively flatten nested lists/dictionaries and convert all items to strings.
+    """
+    flat = []
+    if isinstance(err, list):
+        for item in err:
+            flat.extend(flatten_error(item))
+    elif isinstance(err, dict):
+        flat.append(str(err))
+    else:
+        flat.append(str(err))
+    return flat
+
+
 class CustomSystemPrompt(SystemPrompt):
     def important_rules(self) -> str:
         """
@@ -27,7 +42,7 @@ class CustomSystemPrompt(SystemPrompt):
            "summary": "Please generate a brief natural language description for the operation in next actions based on your Thought."
          },
          "action": [
-           * actions in sequences, please refer to **Common action sequences**. Each output action MUST be formated as: {action_name: action_params}* 
+           * actions in sequences, please refer to **Common action sequences**. Each output action MUST be formatted as: {action_name: action_params}* 
          ]
        }
     2. ACTIONS: You can specify multiple actions to be executed in sequence.
@@ -99,11 +114,6 @@ class CustomSystemPrompt(SystemPrompt):
         """
 
     def get_system_message(self) -> SystemMessage:
-        """
-        Get the system prompt for the agent.
-        Returns:
-            SystemMessage: Formatted system prompt.
-        """
         AGENT_PROMPT = f"""You are a precise browser automation agent that interacts with websites through structured commands. Your role is to:
     1. Analyze the provided webpage elements and structure.
     2. Plan a sequence of actions to accomplish the given task.
@@ -118,9 +128,7 @@ class CustomSystemPrompt(SystemPrompt):
 
 class CustomAgentMessagePrompt(AgentMessagePrompt):
     def __init__(self, *args, actions: Optional[List[ActionModel]] = None, **kwargs):
-        # Remove any 'include_attributes' from kwargs.
         kwargs.pop('include_attributes', None)
-        # Call the base initializer with include_attributes explicitly set to an empty list.
         super().__init__(
             state=kwargs.get('state'),
             result=kwargs.get('result'),
@@ -129,7 +137,7 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
             step_info=kwargs.get('step_info')
         )
         self.actions = actions
-        self.include_attributes = []  # Force an empty list
+        self.include_attributes = []
 
     def get_user_message(self) -> HumanMessage:
         if self.step_info:
@@ -155,9 +163,9 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
         state_description = f"""
 {step_info_description}
 1. Task: {self.step_info.task}.
-2. Hints(Optional): 
+2. Hints(Optional):
 {self.step_info.add_infos}
-3. Memory: 
+3. Memory:
 {self.step_info.memory}
 4. Current url: {self.state.url}
 5. Available tabs:
@@ -168,16 +176,6 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
         if self.actions and self.result:
             state_description += "\n **Previous Actions** \n"
             state_description += f'Previous step: {self.step_info.step_number-1}/{self.step_info.max_steps} \n'
-            def flatten_and_stringify(err):
-                flat = []
-                if isinstance(err, list):
-                    for item in err:
-                        flat.extend(flatten_and_stringify(item))
-                elif isinstance(err, dict):
-                    flat.append(str(err))
-                else:
-                    flat.append(str(err))
-                return flat
             for i, result in enumerate(self.result):
                 action = self.actions[i]
                 state_description += f"Previous action {i + 1}/{len(self.result)}: {action.model_dump_json(exclude_unset=True)}\n"
@@ -185,7 +183,7 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
                     if result.extracted_content:
                         state_description += f"Result of previous action {i + 1}/{len(self.result)}: {result.extracted_content}\n"
                     if result.error:
-                        error_list = flatten_and_stringify(result.error)
+                        error_list = flatten_error(result.error)
                         error_str = ", ".join(error_list)
                         error_str = error_str[-self.max_error_length:]
                         state_description += f"Error of previous action {i + 1}/{len(self.result)}: ...{error_str}\n"
