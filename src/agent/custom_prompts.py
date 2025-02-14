@@ -12,10 +12,11 @@ from .custom_views import CustomAgentStepInfo
 
 def flatten_error(err):
     """
-    Recursively flatten nested lists/dictionaries and convert all items to strings.
+    Recursively flatten nested lists, tuples, and dictionaries,
+    converting all items to strings.
     """
     flat = []
-    if isinstance(err, list):
+    if isinstance(err, (list, tuple)):
         for item in err:
             flat.extend(flatten_error(item))
     elif isinstance(err, dict):
