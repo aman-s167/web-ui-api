@@ -134,13 +134,12 @@ class CustomSystemPrompt(SystemPrompt):
 
 class CustomAgentMessagePrompt(AgentMessagePrompt):
     def __init__(self, *args, actions: Optional[List[ActionModel]] = None, **kwargs):
-        # Remove 'include_attributes' if passed in kwargs.
+        # Remove any 'include_attributes' from kwargs.
         kwargs.pop('include_attributes', None)
         super(CustomAgentMessagePrompt, self).__init__(*args, **kwargs)
         self.actions = actions
-        # Optionally, if the base class doesn't set include_attributes, you can default it here:
-        if not hasattr(self, 'include_attributes'):
-            self.include_attributes = []
+        # Set include_attributes to an empty list.
+        self.include_attributes = []
 
     def get_user_message(self) -> HumanMessage:
         if self.step_info:
