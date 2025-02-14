@@ -137,7 +137,11 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
         # Remove any 'include_attributes' from kwargs.
         kwargs.pop('include_attributes', None)
         # Call the base initializer with include_attributes explicitly set to an empty list.
-        super().__init__(state=kwargs.get('state'), result=kwargs.get('result'), include_attributes=[], max_error_length=kwargs.get('max_error_length', 400), step_info=kwargs.get('step_info'))
+        super().__init__(state=kwargs.get('state'),
+                         result=kwargs.get('result'),
+                         include_attributes=[],
+                         max_error_length=kwargs.get('max_error_length', 400),
+                         step_info=kwargs.get('step_info'))
         self.actions = actions
         self.include_attributes = []  # Force an empty list
 
@@ -195,9 +199,15 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
                     if result.extracted_content:
                         state_description += f"Result of previous action {i + 1}/{len(self.result)}: {result.extracted_content}\n"
                     if result.error:
-                        # Convert error to string if it's a list.
+                        def flatten(lst):
+                            for item in lst:
+                                if isinstance(item, list):
+                                    yield from flatten(item)
+                                else:
+                                    yield item
                         if isinstance(result.error, list):
-                            error_str = ", ".join(map(str, result.error))
+                            flattened = list(flatten(result.error))
+                            error_str = ", ".join(map(str, flattened))
                         else:
                             error_str = str(result.error)
                         error_str = error_str[-self.max_error_length:]
