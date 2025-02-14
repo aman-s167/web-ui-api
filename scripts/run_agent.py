@@ -1,41 +1,43 @@
-#!/usr/bin/env python3
-import sys
 import os
-import asyncio
+import sys
 import json
+import logging
+from typing import Optional
 
-# Ensure the parent directory is in the PYTHONPATH
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
+from langchain.schema import HumanMessage
 from src.agent.custom_agent import CustomAgent
-from src.controller.custom_controller import CustomController
-from langchain_google_genai import ChatGoogleGenerativeAI  # Gemini via Google Generative AI
+from src.message_manager.custom_message_manager import CustomMessageManager
 
-async def main():
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("agent")
+
+def main():
     if len(sys.argv) < 2:
-        print("Usage: run_agent.py 'Your prompt here'")
+        print("Usage: python run_agent.py '<your_command>'")
         sys.exit(1)
-    prompt = sys.argv[1]
     
-    # Initialize the Gemini model.
-    # Replace YOUR_GEMINI_API_KEY with your actual Gemini API key.
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash", 
-        google_api_key="AIzaSyCCCoVrr42NNT9w0abgabwTUSiuR5qAqK0"
-    )
+    user_prompt = sys.argv[1]
     
-    controller = CustomController()
+    logger.info("\U0001F680 Starting task: %s", user_prompt)
     
+    # Initialize message manager
+    message_manager = CustomMessageManager()
+    
+    # Add user-provided input as a primary instruction
+    message_manager._add_message_with_tokens(HumanMessage(content=f"USER INSTRUCTION: {user_prompt}"))
+    
+    # Initialize the agent
     agent = CustomAgent(
-        task=prompt,
-        llm=llm,
-        controller=controller,
-        use_vision=False  # Adjust if you need vision
+        message_manager=message_manager,
+        browser_env_name=os.getenv("BROWSER_ENV", "default"),
+        max_iterations=int(os.getenv("MAX_ITERATIONS", 10))
     )
     
-    history = await agent.run(max_steps=10)
-    # Use model_dump() instead of dict() (Pydantic V2 compatible)
-    print(json.dumps(history.model_dump(), indent=2))
-
+    # Run the agent
+    result = agent.run()
+    
+    # Output the result
+    print(json.dumps(result, indent=2))
+    
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
