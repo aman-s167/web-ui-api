@@ -2,6 +2,7 @@ import json
 import logging
 import traceback
 from typing import Optional, Type, List, Dict, Any, Callable
+
 from PIL import Image, ImageDraw, ImageFont
 import os
 import base64
@@ -19,7 +20,7 @@ from browser_use.agent.views import (
 )
 from browser_use.browser.browser import Browser
 from browser_use.browser.context import BrowserContext
-from browser_use.browser.views import BrowserStateHistory
+from browser_use.browser.views import BrowserState, BrowserStateHistory
 from browser_use.controller.service import Controller
 from browser_use.telemetry.views import (
     AgentEndTelemetryEvent,
@@ -99,7 +100,6 @@ class CustomAgent(Agent):
             register_done_callback=register_done_callback,
             tool_calling_method=tool_calling_method
         )
-        # Adjust for Gemini (Google Generative AI) if applicable
         if self.model_name in ["deepseek-reasoner"] or "deepseek-r1" in self.model_name:
             self.use_deepseek_r1 = True
             self.max_input_tokens = 64000
@@ -118,18 +118,16 @@ class CustomAgent(Agent):
             system_prompt_class=self.system_prompt_class,
             agent_prompt_class=agent_prompt_class,
             max_input_tokens=self.max_input_tokens,
-            include_attributes=self.include_attributes,
+            include_attributes=include_attributes,
             max_error_length=self.max_error_length,
             max_actions_per_step=self.max_actions_per_step
         )
 
     def _setup_action_models(self) -> None:
-        """Setup dynamic action models from the controller's registry."""
         self.ActionModel = self.controller.registry.create_action_model()
         self.AgentOutput = CustomAgentOutput.type_with_custom_actions(self.ActionModel)
 
     def _log_response(self, response: CustomAgentOutput) -> None:
-        """Log the LLM's response."""
         if "Success" in response.current_state.prev_action_evaluation:
             emoji = "✅"
         elif "Failed" in response.current_state.prev_action_evaluation:
@@ -148,7 +146,6 @@ class CustomAgent(Agent):
     def update_step_info(
         self, model_output: CustomAgentOutput, step_info: Optional[CustomAgentStepInfo] = None
     ):
-        """Update step information based on the model output."""
         if step_info is None:
             return
         step_info.step_number += 1
@@ -164,7 +161,6 @@ class CustomAgent(Agent):
 
     @time_execution_async("--get_next_action")
     async def get_next_action(self, input_messages: List[BaseMessage]) -> AgentOutput:
-        """Invoke the LLM to obtain the next action based on current messages."""
         messages_to_process = (
             self.message_manager.merge_successive_human_messages(input_messages)
             if self.use_deepseek_r1
@@ -172,12 +168,10 @@ class CustomAgent(Agent):
         )
         ai_message = self.llm.invoke(messages_to_process)
         self.message_manager._add_message_with_tokens(ai_message)
-
         if self.use_deepseek_r1:
             logger.info("🤯 Start Deep Thinking: ")
             logger.info(ai_message.reasoning_content)
             logger.info("🤯 End Deep Thinking")
-
         content = ai_message.content
         if isinstance(content, list):
             content = content[0]
@@ -195,7 +189,6 @@ class CustomAgent(Agent):
 
     @time_execution_async("--step")
     async def step(self, step_info: Optional[CustomAgentStepInfo] = None) -> None:
-        """Perform one step of the task."""
         logger.info(f"\n📍 Step {self.n_steps}")
         state = None
         model_output = None
@@ -259,7 +252,6 @@ class CustomAgent(Agent):
                 self._make_history_item(model_output, state, result)
 
     async def run(self, max_steps: int = 100) -> AgentHistoryList:
-        """Run the agent for a maximum number of steps."""
         try:
             self._log_agent_run()
             if self.initial_actions:
@@ -318,7 +310,6 @@ class CustomAgent(Agent):
                 self.create_history_gif(output_path=output_path)
 
     def _create_stop_history_item(self):
-        """Create a history item when the agent is stopped."""
         try:
             state = None
             if self.agent_state:
@@ -382,11 +373,9 @@ class CustomAgent(Agent):
         margin: int = 40,
         line_spacing: float = 1.5,
     ) -> None:
-        """Create a GIF from the agent's history."""
         if not self.history.history or not self.history.history[0].state.screenshot:
             logger.warning("No history or first screenshot to create GIF from")
             return
-
         images = []
         try:
             from PIL import ImageFont
@@ -422,13 +411,11 @@ class CustomAgent(Agent):
                 logo = logo.resize((logo_width, logo_height), Image.Resampling.LANCZOS)
             except Exception as e:
                 logger.warning(f"Could not load logo: {e}")
-
         if show_task and self.task:
             task_frame = self._create_task_frame(
                 self.task, self.history.history[0].state.screenshot, title_font, regular_font, logo, line_spacing
             )
             images.append(task_frame)
-
         for i, item in enumerate(self.history.history, 1):
             if not item.state.screenshot:
                 continue
