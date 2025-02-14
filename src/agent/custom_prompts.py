@@ -138,17 +138,16 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
             state: BrowserState,
             actions: Optional[List[ActionModel]] = None,
             result: Optional[List[ActionResult]] = None,
-            include_attributes: Optional[List[str]] = None,
             max_error_length: int = 400,
             step_info: Optional[CustomAgentStepInfo] = None,
     ):
-        if include_attributes is None:
-            include_attributes = []
-        # Pass arguments positionally in the order expected by the base class,
-        # but force include_attributes as an empty list.
-        super(CustomAgentMessagePrompt, self).__init__(state, result, [], max_error_length, step_info)
-        # Override the instance attribute with the desired value.
-        self.include_attributes = include_attributes
+        # Do not include 'include_attributes' as a parameter here.
+        super(CustomAgentMessagePrompt, self).__init__(
+            state=state,
+            result=result,
+            max_error_length=max_error_length,
+            step_info=step_info
+        )
         self.actions = actions
 
     def get_user_message(self) -> HumanMessage:
@@ -160,6 +159,7 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
         time_str = datetime.now().strftime("%Y-%m-%d %H:%M")
         step_info_description += f"Current date and time: {time_str}"
 
+        # Use the include_attributes that the base class has already set.
         elements_text = self.state.element_tree.clickable_elements_to_string(include_attributes=self.include_attributes)
 
         has_content_above = (self.state.pixels_above or 0) > 0
