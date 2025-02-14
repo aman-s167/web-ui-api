@@ -12,26 +12,8 @@ from .custom_views import CustomAgentStepInfo
 
 logger = logging.getLogger(__name__)
 
-def flatten_error(err):
-    """
-    Recursively flatten nested lists and tuples, converting all items to strings.
-    """
-    flat = []
-    if isinstance(err, (list, tuple)):
-        for item in err:
-            flat.extend(flatten_error(item))
-    elif isinstance(err, dict):
-        flat.append(str(err))
-    else:
-        flat.append(str(err))
-    return flat
-
-
 class CustomSystemPrompt(SystemPrompt):
     def important_rules(self) -> str:
-        """
-        Returns the important rules for the agent.
-        """
         text = r"""
     1. RESPONSE FORMAT: You must ALWAYS respond with valid JSON in this exact format:
        {
@@ -185,10 +167,8 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
                     if result.extracted_content:
                         state_description += f"Result of previous action {i + 1}/{len(self.result)}: {str(result.extracted_content)}\n"
                     if result.error:
-                        # Log error type and content for debugging.
-                        logger.error("Result.error type: %s, value: %s", type(result.error), result.error)
-                        error_str = repr(result.error)
-                        error_str = error_str[-self.max_error_length:]
+                        # Force conversion of error to a string using str().
+                        error_str = str(result.error)
                         state_description += f"Error of previous action {i + 1}/{len(self.result)}: ...{error_str}\n"
         if self.state.screenshot:
             return HumanMessage(
