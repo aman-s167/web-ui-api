@@ -1,11 +1,11 @@
 import pdb
 from typing import List, Optional
+from datetime import datetime
 
 from browser_use.agent.prompts import SystemPrompt, AgentMessagePrompt
 from browser_use.agent.views import ActionResult, ActionModel
 from browser_use.browser.views import BrowserState
 from langchain_core.messages import HumanMessage, SystemMessage
-from datetime import datetime
 
 from .custom_views import CustomAgentStepInfo
 
@@ -20,14 +20,14 @@ class CustomSystemPrompt(SystemPrompt):
        {
          "current_state": {
            "prev_action_evaluation": "Success|Failed|Unknown - Analyze the current elements and the image to check if the previous goals/actions are successful like intended by the task. Ignore the action result. The website is the ground truth. Also mention if something unexpected happened like new suggestions in an input field. Shortly state why/why not. Note that the result you output must be consistent with the reasoning you output afterwards. If you consider it to be 'Failed,' you should reflect on this during your thought.",
-           "important_contents": "Output important contents closely related to user\'s instruction on the current page. If there is, please output the contents. If not, please output empty string ''.",
+           "important_contents": "Output important contents closely related to user's instruction on the current page. If there is, please output the contents. If not, please output empty string ''.",
            "task_progress": "Task Progress is a general summary of the current contents that have been completed. Just summarize the contents that have been actually completed based on the content at current step and the history operations. Please list each completed item individually, such as: 1. Input username. 2. Input Password. 3. Click confirm button. Please return string type not a list.",
            "future_plans": "Based on the user's request and the current state, outline the remaining steps needed to complete the task. This should be a concise list of actions yet to be performed, such as: 1. Select a date. 2. Choose a specific time slot. 3. Confirm booking. Please return string type not a list.",
            "thought": "Think about the requirements that have been completed in previous operations and the requirements that need to be completed in the next one operation. If your output of prev_action_evaluation is 'Failed', please reflect and output your reflection here.",
            "summary": "Please generate a brief natural language description for the operation in next actions based on your Thought."
          },
          "action": [
-           * actions in sequences, please refer to **Common action sequences**. Each output action MUST be formated as: \{action_name\: action_params\}* 
+           * actions in sequences, please refer to **Common action sequences**. Each output action MUST be formated as: {action_name: action_params}* 
          ]
        }
 
@@ -44,7 +44,6 @@ class CustomSystemPrompt(SystemPrompt):
            {"extract_page_content": {}}
          ]
 
-
     3. ELEMENT INTERACTION:
        - Only use indexes that exist in the provided element list
        - Each element has a unique index number (e.g., "33[:]<button>")
@@ -57,7 +56,7 @@ class CustomSystemPrompt(SystemPrompt):
        - Use scroll to find elements you are looking for
 
     5. TASK COMPLETION:
-       - If you think all the requirements of user\'s instruction have been completed and no further operation is required, output the **Done** action to terminate the operation process.
+       - If you think all the requirements of user's instruction have been completed and no further operation is required, output the **Done** action to terminate the operation process.
        - Don't hallucinate actions.
        - If the task requires specific information - make sure to include everything in the done function. This is what the user will see.
        - If you are running out of steps (current step), think about speeding it up, and ALWAYS use the done action as the last action.
@@ -89,8 +88,8 @@ class CustomSystemPrompt(SystemPrompt):
     def input_format(self) -> str:
         return """
     INPUT STRUCTURE:
-    1. Task: The user\'s instructions you need to complete.
-    2. Hints(Optional): Some hints to help you complete the user\'s instructions.
+    1. Task: The user's instructions you need to complete.
+    2. Hints(Optional): Some hints to help you complete the user's instructions.
     3. Memory: Important contents are recorded during historical operations for use in subsequent operations.
     4. Current URL: The webpage you're currently on
     5. Available Tabs: List of open browser tabs
@@ -139,16 +138,20 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
             state: BrowserState,
             actions: Optional[List[ActionModel]] = None,
             result: Optional[List[ActionResult]] = None,
-            include_attributes: list[str] = [],
+            include_attributes: Optional[List[str]] = None,
             max_error_length: int = 400,
             step_info: Optional[CustomAgentStepInfo] = None,
     ):
-        super(CustomAgentMessagePrompt, self).__init__(state=state, 
-                                                       result=result, 
-                                                       include_attributes=include_attributes, 
-                                                       max_error_length=max_error_length, 
-                                                       step_info=step_info
-                                                       )
+        # Call the base initializer without passing include_attributes to avoid duplication.
+        super(CustomAgentMessagePrompt, self).__init__(
+            state=state,
+            result=result,
+            max_error_length=max_error_length,
+            step_info=step_info
+        )
+        # Now, if include_attributes was provided, set it on the instance.
+        if include_attributes is not None:
+            self.include_attributes = include_attributes
         self.actions = actions
 
     def get_user_message(self) -> HumanMessage:
