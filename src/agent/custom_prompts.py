@@ -141,7 +141,7 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
             max_error_length: int = 400,
             step_info: Optional[CustomAgentStepInfo] = None,
     ):
-        # Do not include 'include_attributes' as a parameter here.
+        # Call the base initializer without passing include_attributes.
         super(CustomAgentMessagePrompt, self).__init__(
             state=state,
             result=result,
@@ -159,7 +159,7 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
         time_str = datetime.now().strftime("%Y-%m-%d %H:%M")
         step_info_description += f"Current date and time: {time_str}"
 
-        # Use the include_attributes that the base class has already set.
+        # Use the include_attributes from the base class (if any).
         elements_text = self.state.element_tree.clickable_elements_to_string(include_attributes=self.include_attributes)
 
         has_content_above = (self.state.pixels_above or 0) > 0
