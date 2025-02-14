@@ -16,7 +16,7 @@ def main():
     # Initialize the Gemini model.
     # Replace YOUR_GEMINI_API_KEY with your actual Gemini API key
     llm = ChatGoogleGenerativeAI(
-        model_name="gemini-2.0-flash", 
+        model="gemini-2.0-flash", 
         google_api_key="AIzaSyCCCoVrr42NNT9w0abgabwTUSiuR5qAqK0"
     )
     
@@ -26,7 +26,7 @@ def main():
         task=prompt,
         llm=llm,
         controller=controller,
-        use_vision=False  # Change to True if vision is needed
+        use_vision=False  # Set to True if needed
     )
     
     history = agent.run(max_steps=10)
