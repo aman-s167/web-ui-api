@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-import sys
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 import json
 from src.agent.custom_agent import CustomAgent
 from src.controller.custom_controller import CustomController
-from langchain_core.language_models.chat_models import BaseChatModel
-# Import your LLM of choice. For example, from your utils or llm file:
-from src.llm import DeepSeekR1ChatOpenAI  
+from src.llm import DeepSeekR1ChatOpenAI
 
 def main():
     if len(sys.argv) < 2:
@@ -14,17 +14,16 @@ def main():
     prompt = sys.argv[1]
     # Initialize your LLM – adjust parameters as needed.
     llm = DeepSeekR1ChatOpenAI(model="deepseek-chat", api_key="YOUR_API_KEY")
-    # Initialize controller; if you have custom settings, adjust here.
+    # Initialize controller.
     controller = CustomController()
     # Instantiate your agent.
     agent = CustomAgent(
         task=prompt,
         llm=llm,
         controller=controller,
-        use_vision=False,  # or True if needed
-        # additional parameters if needed...
+        use_vision=False  # or True if needed
     )
-    # Run the agent – for example, with a maximum number of steps.
+    # Run the agent – adjust the max steps as needed.
     history = agent.run(max_steps=10)
     # Output the final history as JSON.
     print(json.dumps(history.dict(), indent=2))
