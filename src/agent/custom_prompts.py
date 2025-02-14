@@ -12,19 +12,17 @@ from .custom_views import CustomAgentStepInfo
 
 def flatten_error(err):
     """
-    Iteratively flatten nested lists and tuples, converting all items to strings.
+    Recursively flatten nested lists and tuples, converting all items to strings.
+    (This helper is retained in case you need it later.)
     """
     result = []
-    stack = [err]
-    while stack:
-        current = stack.pop(0)
-        if isinstance(current, (list, tuple)):
-            # Extend the stack with items from the current list/tuple
-            stack = list(current) + stack
-        elif isinstance(current, dict):
-            result.append(str(current))
-        else:
-            result.append(str(current))
+    if isinstance(err, (list, tuple)):
+        for item in err:
+            result.extend(flatten_error(item))
+    elif isinstance(err, dict):
+        result.append(str(err))
+    else:
+        result.append(str(err))
     return result
 
 
@@ -186,8 +184,8 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
                     if result.extracted_content:
                         state_description += f"Result of previous action {i + 1}/{len(self.result)}: {result.extracted_content}\n"
                     if result.error:
-                        error_list = flatten_error(result.error)
-                        error_str = ", ".join(error_list)
+                        # Force the error to a string using repr to handle nested structures.
+                        error_str = repr(result.error)
                         error_str = error_str[-self.max_error_length:]
                         state_description += f"Error of previous action {i + 1}/{len(self.result)}: ...{error_str}\n"
         if self.state.screenshot:
