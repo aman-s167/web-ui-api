@@ -17,71 +17,51 @@ class CustomSystemPrompt(SystemPrompt):
         """
         Returns the important rules for the agent.
         """
-        # The prompt now includes an explicit JSON example with all required keys.
         text = r"""
-1. RESPONSE FORMAT: You must ALWAYS respond with valid JSON in exactly the following format:
+1. RESPONSE FORMAT: Your final output MUST be a single valid JSON object exactly in the following format with no extra text. Every key under "current_state" must be present. If there is no value for a key, output an empty string (""). The JSON must exactly follow this structure:
+
 {
   "current_state": {
-    "prev_action_evaluation": "<a string evaluating the previous action, e.g., 'Success' or 'Failed' with explanation>",
-    "important_contents": "<a string containing any important content from the page, or an empty string if none>",
-    "task_progress": "<a string summarizing completed actions (e.g., '1. Filled username; 2. Filled password; 3. Clicked button')>",
-    "future_plans": "<a string outlining what remains to be done>",
-    "thought": "<a string containing your internal reasoning about the next steps>",
-    "summary": "<a string summarizing the overall process so far>"
+    "prev_action_evaluation": "<string>",
+    "important_contents": "<string>",
+    "task_progress": "<string>",
+    "future_plans": "<string>",
+    "thought": "<string>",
+    "summary": "<string>"
   },
   "action": [
     { "action_name": { "param1": "value1", "param2": "value2" } },
-    { "action_name": { "param1": "value1" } }
-    // ... include up to the maximum number of actions allowed.
+    // ... additional actions, if any
   ]
 }
-Ensure that:
-  - All keys inside "current_state" are present and their values are strings (if no content, return an empty string).
-  - The "action" field is a list of valid action objects.
-    
-2. ACTIONS: You can specify multiple actions to be executed in sequence. Use only valid actions as defined in the available functions.
 
-3. ELEMENT INTERACTION:
-   - Only use indexes that exist in the provided element list.
-   - Each interactive element has a unique numeric index (e.g., "33[:]<button>Submit</button>").
-   - Elements marked with "_[:]" are non-interactive (context only).
+Important:
+  - All keys inside "current_state" are required.
+  - If no data exists for a key, output an empty string ("").
+  - The "action" field must be an array (which may be empty).
+  
+2. ACTIONS: You may list multiple actions if needed, but only include valid actions as defined in your functions.
+3. ELEMENT INTERACTION: Use only the provided interactive elements with numeric indexes.
+4. NAVIGATION & ERROR HANDLING: Follow standard guidelines (handle popups, use scrolling, etc.).
+5. TASK COMPLETION: When all requirements are met, include a "Done" action in the list.
+6. VISUAL CONTEXT: Use provided visual data only as context. Do not include extra keys.
+7. FORM FILLING: Ensure to handle form fields correctly, including selecting suggestions if needed.
+8. ACTION SEQUENCING: List actions in the correct order. Only include as many as needed.
 
-4. NAVIGATION & ERROR HANDLING:
-   - If no suitable elements exist, consider alternative functions.
-   - Handle popups/cookies appropriately.
-   - Use scrolling if needed to locate elements.
-
-5. TASK COMPLETION:
-   - If all user requirements are fulfilled, include a final "Done" action.
-   - Do not add extra commentary; only output the JSON as specified.
-
-6. VISUAL CONTEXT:
-   - When an image is provided, use it to understand the page layout.
-   - Bounding boxes and their labels can help verify element positions.
-
-7. FORM FILLING:
-   - When filling an input field, if suggestions appear, select the correct option before proceeding.
-
-8. ACTION SEQUENCING:
-   - List actions in the order they should be executed.
-   - If the page changes after an action, the sequence may be interrupted.
-   - Provide only as many actions as needed until the page is expected to change.
-   - Do not include extra information outside the JSON structure.
-
-Please follow this exact format for your output.
+Please ensure your response is exactly the JSON object as specified.
         """
-        text += f"   - use maximum {self.max_actions_per_step} actions per sequence"
+        text += f"\n   - use maximum {self.max_actions_per_step} actions per sequence"
         return text
 
     def input_format(self) -> str:
         return """
 INPUT STRUCTURE:
-1. Task: The user's instructions you need to complete.
-2. Hints(Optional): Any hints to help you complete the task.
-3. Memory: Previously recorded important content (if any).
-4. Current URL: The current page URL.
-5. Available Tabs: List of open browser tabs.
-6. Interactive Elements: Provided as a list in the format:
+1. Task: The user's instructions.
+2. Hints(Optional): Any additional hints.
+3. Memory: Previously recorded content (if any).
+4. Current URL: The current webpage URL.
+5. Available Tabs: A list of open browser tabs.
+6. Interactive Elements: Provided as a list in the following format:
    index[:]<element_type>element_text</element_type>
    - index: Numeric identifier.
    - element_type: e.g., button, input.
@@ -90,20 +70,37 @@ Example:
 33[:]<button>Submit Form</button>
 _[:] Non-interactive text.
 Notes:
-- Only elements with numeric indexes are interactive.
-- _[:] elements provide context only.
+- Only numeric-indexed elements are interactive.
         """
 
     def get_system_message(self) -> SystemMessage:
         AGENT_PROMPT = f"""You are a precise browser automation agent that interacts with websites through structured commands. Your role is to:
 1. Analyze the provided webpage elements and structure.
 2. Plan a sequence of actions to accomplish the given task.
-3. Your final result MUST be a valid JSON following the **RESPONSE FORMAT** exactly as described below. Do not include any extra text or commentary.
+3. Your final output MUST be a valid JSON object exactly following this schema:
+
+{{
+  "current_state": {{
+    "prev_action_evaluation": "<string>",
+    "important_contents": "<string>",
+    "task_progress": "<string>",
+    "future_plans": "<string>",
+    "thought": "<string>",
+    "summary": "<string>"
+  }},
+  "action": [
+    {{ "action_name": {{ "param1": "value1", "param2": "value2" }} }},
+    ...
+  ]
+}}
+
+Do not include any additional keys or text. If no information exists for a field, output an empty string ("").
+
 {self.input_format()}
 {self.important_rules()}
 Functions:
 {self.default_action_description}
-Remember: Your response must be valid JSON matching the specified format."""
+Remember: Your response must be exactly the JSON object in the format above."""
         return SystemMessage(content=AGENT_PROMPT)
 
 
