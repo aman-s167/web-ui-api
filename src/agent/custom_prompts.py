@@ -199,17 +199,16 @@ class CustomAgentMessagePrompt(AgentMessagePrompt):
                     if result.extracted_content:
                         state_description += f"Result of previous action {i + 1}/{len(self.result)}: {result.extracted_content}\n"
                     if result.error:
-                        def flatten(lst):
-                            for item in lst:
-                                if isinstance(item, list):
-                                    yield from flatten(item)
-                                else:
-                                    yield item
-                        if isinstance(result.error, list):
-                            flattened = list(flatten(result.error))
-                            error_str = ", ".join(map(str, flattened))
-                        else:
-                            error_str = str(result.error)
+                        def flatten_error(err):
+                            if isinstance(err, list):
+                                result_list = []
+                                for e in err:
+                                    result_list.extend(flatten_error(e))
+                                return result_list
+                            else:
+                                return [str(err)]
+                        error_list = flatten_error(result.error)
+                        error_str = ", ".join(error_list)
                         error_str = error_str[-self.max_error_length:]
                         state_description += f"Error of previous action {i + 1}/{len(self.result)}: ...{error_str}\n"
 
