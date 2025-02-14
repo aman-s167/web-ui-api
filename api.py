@@ -1,33 +1,48 @@
-# api.py
-import json
+import os
 import asyncio
+import json
 from flask import Flask, request, jsonify
 
-# IMPORTANT: Adjust the following import if your CustomAgent is in a different location.
-# Here we assume that CustomAgent is defined in a file inside the project.
+# Hypothetical imports:
+# If using Gemini, import GeminiLLM from your custom module.
+# Otherwise, import ChatOpenAI for OpenAI.
+LLM_TYPE = os.getenv("LLM_TYPE", "openai").lower()
+
+if LLM_TYPE == "gemini":
+    # Ensure you have a Gemini adapter module. Replace with the actual implementation.
+    from my_gemini_module import GeminiLLM
+    # Use the provided Gemini API key and model.
+    gemini_api_key = os.getenv("GEMINI_API_KEY")
+    # Optionally, allow setting the Gemini model via an environment variable.
+    gemini_model = os.getenv("GEMINI_MODEL", "gemini-1")  # Default Gemini model (adjust as needed)
+    llm_class = GeminiLLM
+    llm_kwargs = {"api_key": gemini_api_key, "model_name": gemini_model}
+else:
+    # Default to OpenAI's ChatOpenAI adapter
+    from langchain_openai import ChatOpenAI
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    # Optionally, allow setting the OpenAI model via an environment variable.
+    openai_model = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+    llm_class = ChatOpenAI
+    llm_kwargs = {"api_key": openai_api_key, "model_name": openai_model}
+
+# Instantiate the LLM
+llm = llm_class(**llm_kwargs)
+
+# Continue with your agent code...
 from src.agent.custom_agent import CustomAgent
-from langchain_openai import ChatOpenAI
 
-# Helper function to run the agent (agent endpoint)
-async def run_agent(prompt: str):
-    # Replace 'YOUR_OPENAI_API_KEY' with your actual OpenAI API key
-    llm = ChatOpenAI(api_key='YOUR_OPENAI_API_KEY', model_name='gpt-3.5-turbo')
-    # Create an instance of the agent using the prompt as the task.
-    agent = CustomAgent(task=prompt, llm=llm)
-    # Run the agent for a maximum of 10 steps (adjust if needed)
-    history = await agent.run(max_steps=10)
-    # Return the history as a string (for simplicity)
-    return {"history": str(history)}
-
-# Helper function for deep research (deep research endpoint)
-async def run_deep_research(prompt: str):
-    llm = ChatOpenAI(api_key='YOUR_OPENAI_API_KEY', model_name='gpt-3.5-turbo')
-    agent = CustomAgent(task=prompt, llm=llm)
-    history = await agent.run(max_steps=10)
-    return {"history": str(history)}
-
-# Create the Flask app
 app = Flask(__name__)
+
+async def run_agent(prompt: str):
+    agent = CustomAgent(task=prompt, llm=llm)
+    history = await agent.run(max_steps=10)
+    return {"history": str(history)}
+
+async def run_deep_research(prompt: str):
+    agent = CustomAgent(task=prompt, llm=llm)
+    history = await agent.run(max_steps=10)
+    return {"history": str(history)}
 
 @app.route('/api/agent', methods=['POST'])
 def api_agent():
@@ -37,7 +52,6 @@ def api_agent():
 
     prompt = data['prompt']
     try:
-        # Run the asynchronous function and get the result.
         result = asyncio.run(run_agent(prompt))
         return jsonify({'result': result})
     except Exception as e:
@@ -57,5 +71,4 @@ def api_deep_research():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    # The API will listen on port 5000.
     app.run(host='0.0.0.0', port=5000)
