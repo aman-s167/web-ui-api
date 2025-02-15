@@ -91,7 +91,7 @@ def handle_agent():
             agent_state=agent_state
         )
 
-        result = asyncio.run(agent.run(max_steps=max_steps))
+        result = asyncio.run(agent.run(max_steps=3))
         final_report = result.final_result()
 
         # Close browser context and browser if created
