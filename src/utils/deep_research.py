@@ -4,7 +4,11 @@ import logging
 import time
 import google.api_core.exceptions
 import random
+from dotenv import load_dotenv
 from src.utils import utils
+
+# Load environment variables
+load_dotenv()
 
 # Load environment variables
 load_dotenv()
