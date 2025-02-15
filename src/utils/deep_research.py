@@ -42,7 +42,7 @@ def invoke_with_retry(messages, retries=3):
     for attempt in range(retries):
         try:
             llm = utils.get_llm_model(
-                provider="google",
+                provider="gemini",
                 model_name="gemini-2.0-flash-thinking-exp-01-21",
                 temperature=1.0,
                 api_key=get_api_key()
@@ -108,7 +108,11 @@ async def deep_research(task, llm, agent_state=None, **kwargs):
             
             search_messages = [SystemMessage(content=query_prompt)]
             ai_query_msg = invoke_with_retry([SystemMessage(content="Process the following task:"), HumanMessage(content=query_prompt)])
-            ai_query_content = json.loads(repair_json(ai_query_msg.content))
+            try:
+    ai_query_content = json.loads(repair_json(ai_query_msg.content))
+except (json.JSONDecodeError, TypeError) as e:
+    logger.error(f"JSON decoding error: {e}")
+    return {"error": "Invalid response from LLM. Please try again."}, None
 
             query_tasks = list(set(ai_query_content["queries"]))[:max_query_num]
             if not query_tasks:
