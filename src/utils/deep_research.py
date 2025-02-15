@@ -42,7 +42,7 @@ def invoke_with_retry(messages, retries=3):
     for attempt in range(retries):
         try:
             llm = utils.get_llm_model(
-                provider="gemini",
+                provider="google",
                 model_name="gemini-2.0-flash-thinking-exp-01-21",
                 temperature=1.0,
                 api_key=get_api_key()
