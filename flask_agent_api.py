@@ -37,7 +37,7 @@ def handle_agent():
         # Initialize the LLM model (example using Google Gemini)
         llm = utils.get_llm_model(
             provider="google",
-            model_name="gemini-2.0-flash-thinking-exp-01-21",
+            model_name="gemini-2.0-flash",
             temperature=1.0,
             api_key=get_api_key()
         )
@@ -75,7 +75,7 @@ def handle_agent():
             ))
 
         # --- For Testing: Return a dummy response ---
-        # return jsonify({'status': 'success', 'report': 'Agent API is up and running!'})
+        return jsonify({'status': 'success', 'report': 'Agent API is up and running!'})
 
         # Instantiate and run the CustomAgent
         agent = CustomAgent(
