@@ -1,4 +1,8 @@
 import os
+import sys
+# Ensure that the project root (the directory containing this file) is in sys.path.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import asyncio
 import logging
 import random
@@ -8,7 +12,7 @@ from src.utils import utils
 from src.agent.custom_agent import CustomAgent
 from src.controller.custom_controller import CustomController
 from src.agent.custom_prompts import CustomSystemPrompt, CustomAgentMessagePrompt
-from agent_state import AgentState  # Updated path since agent_state.py is in the project root
+from agent_state import AgentState  # Now agent_state.py is expected to be in the same directory as this file
 from browser_use.browser.browser import Browser, BrowserConfig
 from src.browser.custom_browser import CustomBrowser
 from src.browser.custom_context import BrowserContextConfig
@@ -29,6 +33,13 @@ def handle_agent():
     if not data or 'task' not in data:
         return jsonify({'error': 'Missing required field: task'}), 400
 
+    # For testing, return a dummy response immediately.
+    # If this dummy response works, then the problem lies in the asynchronous agent logic.
+    return jsonify({'status': 'success', 'report': 'Agent API is up and running!'})
+
+    # Once the dummy response works, you can uncomment the code below:
+
+    """
     task = data['task']
     max_steps = data.get('max_steps', 10)
     use_own_browser = data.get('use_own_browser', False)
@@ -37,7 +48,7 @@ def handle_agent():
         # Initialize the LLM model (example using Google Gemini)
         llm = utils.get_llm_model(
             provider="google",
-            model_name="gemini-2.0-flash-exp",
+            model_name="gemini-2.0-flash-thinking-exp-01-21",
             temperature=1.0,
             api_key=get_api_key()
         )
@@ -74,9 +85,6 @@ def handle_agent():
                 )
             ))
 
-        # --- For Testing: Return a dummy response ---
-        return jsonify({'status': 'success', 'report': 'Agent API is up and running!'})
-
         # Instantiate and run the CustomAgent
         agent = CustomAgent(
             task=task,
@@ -103,6 +111,7 @@ def handle_agent():
     except Exception as e:
         logging.error(f"Error processing agent: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
+    """
 
 if __name__ == '__main__':
     # Disable the reloader to avoid asyncio event loop conflicts.
