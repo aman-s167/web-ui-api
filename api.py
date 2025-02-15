@@ -1,63 +1,56 @@
-import os
-import asyncio
 from flask import Flask, request, jsonify
+import asyncio
+import os
+from dotenv import load_dotenv
 
-from src.agent.custom_agent import CustomAgent
-from langchain_openai import ChatOpenAI
+load_dotenv()
 
-# Import the GeminiLLM wrapper from our newly created module.
-try:
-    from src.llm.gemini_llm import GeminiLLM
-except ImportError:
-    GeminiLLM = None
-
-def get_llm_instance():
-    llm_type = os.getenv("LLM_TYPE", "openai").lower()
-    if llm_type == "gemini":
-        if GeminiLLM is None:
-            raise ImportError("GeminiLLM module is not installed or imported properly.")
-        gemini_api_key = os.getenv("GEMINI_API_KEY")
-        gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")  # Default to gemini-2.0-flash (adjust as needed)
-        if not gemini_api_key:
-            raise ValueError("GEMINI_API_KEY must be set when LLM_TYPE is 'gemini'.")
-        return GeminiLLM(api_key=gemini_api_key, model_name=gemini_model)
-    else:
-        openai_api_key = os.getenv("OPENAI_API_KEY")
-        if not openai_api_key:
-            raise ValueError("OPENAI_API_KEY must be set when using OpenAI LLM.")
-        return ChatOpenAI(api_key=openai_api_key, model_name="gpt-3.5-turbo")
+from deep_research import deep_research
+from src.utils import utils
 
 app = Flask(__name__)
 
-@app.route('/api/agent', methods=['POST'])
-def api_agent():
-    data = request.get_json()
-    if not data or 'prompt' not in data:
-        return jsonify({'error': 'Missing "prompt" in request'}), 400
-
-    prompt = data['prompt']
+@app.route('/deep_research', methods=['POST'])
+def research():
+    """Endpoint to trigger deep research via API."""
     try:
-        llm = get_llm_instance()
-        agent = CustomAgent(task=prompt, llm=llm)
-        history = asyncio.run(agent.run(max_steps=10))
-        return jsonify({'result': {"history": str(history)}})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        data = request.json
+        task = data.get("task", "Default research task")
+        max_search_iterations = data.get("max_search_iterations", 3)
+        max_query_num = data.get("max_query_num", 3)
+        use_own_browser = data.get("use_own_browser", False)
 
-@app.route('/api/deep-research', methods=['POST'])
-def api_deep_research():
-    data = request.get_json()
-    if not data or 'prompt' not in data:
-        return jsonify({'error': 'Missing "prompt" in request'}), 400
+        # Load LLM model (Gemini, OpenAI, etc.)
+        llm = utils.get_llm_model(
+            provider="gemini",
+            model_name="gemini-2.0-flash-thinking-exp-01-21",
+            temperature=1.0,
+            api_key=os.getenv("GOOGLE_API_KEY", "")
+        )
 
-    prompt = data['prompt']
-    try:
-        llm = get_llm_instance()
-        agent = CustomAgent(task=prompt, llm=llm)
-        history = asyncio.run(agent.run(max_steps=10))
-        return jsonify({'result': {"history": str(history)}})
+        # Run deep research in an async loop inside Flask
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        report_content, report_file_path = loop.run_until_complete(
+            deep_research(
+                task=task,
+                llm=llm,
+                max_search_iterations=max_search_iterations,
+                max_query_num=max_query_num,
+                use_own_browser=use_own_browser
+            )
+        )
+
+        response = {
+            "task": task,
+            "report": report_content,
+            "report_path": report_file_path
+        }
+        return jsonify(response)
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host="0.0.0.0", port=7788, debug=True)
