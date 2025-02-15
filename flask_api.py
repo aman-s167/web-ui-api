@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Import deep_research function from the Browser Use Web UI
+# Import deep_research function from the correct path
+from src.utils.deep_research import deep_research
 from src.utils import utils
 
 app = Flask(__name__)
@@ -34,7 +35,7 @@ def handle_research():
         )
         
         # Run deep_research asynchronously
-        report_content, _ = asyncio.run(utils.deep_research(
+        report_content, _ = asyncio.run(deep_research(
             task=task, 
             llm=llm, 
             agent_state=None, 
