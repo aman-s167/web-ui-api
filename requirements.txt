@@ -4,3 +4,4 @@ gradio==5.10.0
 json-repair
 langchain-mistralai==0.2.4
 google-genai==0.2.0
+flask==3.0.0
