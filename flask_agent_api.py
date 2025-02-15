@@ -1,6 +1,6 @@
 import os
 import sys
-# Ensure the project root is in sys.path
+# Ensure the project root is in sys.path so that modules inside src can be imported.
 sys.path.insert(0, os.getcwd())
 print("sys.path:", sys.path)  # For debugging
 
@@ -13,7 +13,7 @@ from src.utils import utils
 from src.agent.custom_agent import CustomAgent
 from src.controller.custom_controller import CustomController
 from src.agent.custom_prompts import CustomSystemPrompt, CustomAgentMessagePrompt
-from src.utils.agent_state import AgentState  # Updated import path
+from src.utils.agent_state import AgentState  # AgentState is now in src/utils/agent_state.py
 from browser_use.browser.browser import Browser, BrowserConfig
 from src.browser.custom_browser import CustomBrowser
 from src.browser.custom_context import BrowserContextConfig
@@ -34,11 +34,6 @@ def handle_agent():
     if not data or 'task' not in data:
         return jsonify({'error': 'Missing required field: task'}), 400
 
-    # For testing purposes, immediately return a dummy response.
-    return jsonify({'status': 'success', 'report': 'Agent API is up and running!'})
-
-    # Uncomment the code below once the dummy response works.
-    """
     task = data['task']
     max_steps = data.get('max_steps', 10)
     use_own_browser = data.get('use_own_browser', False)
@@ -110,7 +105,6 @@ def handle_agent():
     except Exception as e:
         logging.error(f"Error processing agent: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
-    """
 
 if __name__ == '__main__':
     # Disable the reloader to avoid asyncio event loop conflicts.
