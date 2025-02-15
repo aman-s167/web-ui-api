@@ -42,7 +42,7 @@ def handle_agent():
         # Initialize the LLM model (example using Google Gemini)
         llm = utils.get_llm_model(
             provider="google",
-            model_name="gemini-2.0-flash-exp",
+            model_name="gemini-2.0-flash-thinking-exp-01-21",
             temperature=1.0,
             api_key=get_api_key()
         )
@@ -107,5 +107,5 @@ def handle_agent():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 if __name__ == '__main__':
-    # Disable the reloader to avoid asyncio event loop conflicts.
-    app.run(host='0.0.0.0', port=8002, debug=True, use_reloader=False)
+    # Use port 8003 since port 8002 is in use.
+    app.run(host='0.0.0.0', port=8003, debug=True, use_reloader=False)
