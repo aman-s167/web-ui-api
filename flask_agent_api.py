@@ -8,7 +8,7 @@ from src.utils import utils
 from src.agent.custom_agent import CustomAgent
 from src.controller.custom_controller import CustomController
 from src.agent.custom_prompts import CustomSystemPrompt, CustomAgentMessagePrompt
-from src.agent.agent_state import AgentState  # Ensure this path is correct for your project
+from agent_state import AgentState  # Updated import path since agent_state.py is in the project root
 from browser_use.browser.browser import Browser, BrowserConfig
 from src.browser.custom_browser import CustomBrowser
 from src.browser.custom_context import BrowserContextConfig
