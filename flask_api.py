@@ -28,8 +28,8 @@ def handle_research():
     
     try:
         llm = utils.get_llm_model(
-            provider="gemini",
-            model_name="gemini-2.0-flash-thinking-exp-01-21",
+            provider="google",
+            model_name="gemini-2.0-flash-exp",
             temperature=1.0,
             api_key=os.getenv("GOOGLE_API_KEY", "")
         )
