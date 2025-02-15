@@ -38,6 +38,10 @@ from .custom_views import CustomAgentOutput, CustomAgentStepInfo
 
 logger = logging.getLogger(__name__)
 
+# --- NEW: Import and create a rate limiter for LLM calls ---
+from ratelimiter import RateLimiter
+rate_limiter_agent = RateLimiter(max_calls=10, period=60)
+# ------------------------------------------------------------
 
 class CustomAgent(Agent):
     def __init__(
@@ -166,7 +170,10 @@ class CustomAgent(Agent):
             if self.use_deepseek_r1
             else input_messages
         )
-        ai_message = self.llm.invoke(messages_to_process)
+        # --- NEW: Wrap the LLM call with the rate limiter ---
+        with rate_limiter_agent:
+            ai_message = self.llm.invoke(messages_to_process)
+        # ----------------------------------------------------
         self.message_manager._add_message_with_tokens(ai_message)
         if self.use_deepseek_r1:
             logger.info("🤯 Start Deep Thinking: ")
