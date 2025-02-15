@@ -104,11 +104,8 @@ class CustomAgent(Agent):
             register_done_callback=register_done_callback,
             tool_calling_method=tool_calling_method
         )
-        if self.model_name in ["deepseek-reasoner"] or "deepseek-r1" in self.model_name:
-            self.use_deepseek_r1 = True
-            self.max_input_tokens = 64000
-        else:
-            self.use_deepseek_r1 = False
+        # For Gemini, the deepseek condition is not met:
+        self.use_deepseek_r1 = False
 
         self._last_actions = None
         self.extracted_content = ""
@@ -173,7 +170,7 @@ class CustomAgent(Agent):
         # --- Wrap the LLM call with the global rate limiter ---
         with global_llm_rate_limiter:
             ai_message = self.llm.invoke(messages_to_process)
-        # ----------------------------------------------------
+        # -------------------------------------------------------
         self.message_manager._add_message_with_tokens(ai_message)
         if self.use_deepseek_r1:
             logger.info("🤯 Start Deep Thinking: ")
