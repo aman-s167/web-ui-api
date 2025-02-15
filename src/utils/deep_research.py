@@ -107,7 +107,7 @@ async def deep_research(task, llm, agent_state=None, **kwargs):
             """
             
             search_messages = [SystemMessage(content=query_prompt)]
-            ai_query_msg = invoke_with_retry(search_messages)
+            ai_query_msg = invoke_with_retry([SystemMessage(content="Process the following task:"), HumanMessage(content=query_prompt)])
             ai_query_content = json.loads(repair_json(ai_query_msg.content))
 
             query_tasks = list(set(ai_query_content["queries"]))[:max_query_num]
