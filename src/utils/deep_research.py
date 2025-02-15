@@ -134,10 +134,10 @@ async def deep_research(task, llm, agent_state=None, **kwargs):
                     history_infos.append(query_result.final_result())
 
         logger.info("\nFinish Searching, Start Generating Report...")
-        return history_infos
+        return history_infos, None  # Ensure two return values
     except Exception as e:
         logger.error(f"Deep research Error: {e}")
-        return {"error": str(e)}
+        return {"error": str(e)}, None  # Ensure two return values
     finally:
         if browser:
             await browser.close()
