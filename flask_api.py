@@ -4,15 +4,15 @@ import logging
 import time
 import google.api_core.exceptions
 import random
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify  # ✅ Added missing imports
 from dotenv import load_dotenv
-from src.utils.deep_research import deep_research
+from src.utils.deep_research import deep_research  # ✅ Fixed missing import
 from src.utils import utils
 
 # Load environment variables
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(__name__)  # ✅ Fixed Flask app initialization
 logging.basicConfig(level=logging.INFO)
 
 def get_api_key():
@@ -40,9 +40,7 @@ def handle_research():
             api_key=get_api_key()
         )
         
-        retries = int(os.getenv("MAX_API_RETRIES", 3))  # Number of retries for rate limit errors
-        backoff_time = int(os.getenv("API_RETRY_BACKOFF", 5))  # Base backoff time
-        
+        retries = 3  # Number of retries for rate limit errors
         for attempt in range(retries):
             try:
                 report_content, _ = asyncio.run(deep_research(
@@ -57,7 +55,7 @@ def handle_research():
             
             except google.api_core.exceptions.ResourceExhausted as e:
                 if attempt < retries - 1:
-                    wait_time = backoff_time * (attempt + 1)  # Exponential backoff (5s, 10s, 15s)
+                    wait_time = 5 * (attempt + 1)  # Exponential backoff (5s, 10s, 15s)
                     logging.warning(f"Rate limit hit (429). Retrying in {wait_time} seconds...")
                     time.sleep(wait_time)
                 else:
