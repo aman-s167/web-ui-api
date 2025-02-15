@@ -57,15 +57,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Flask for our API endpoints
-RUN pip install flask
-
 # Install Playwright and browsers with system dependencies
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN playwright install --with-deps chromium
 RUN playwright install-deps
 
-# Copy the application code
+# Copy the entire application (including Flask API script)
 COPY . .
 
 # Set environment variables
@@ -84,9 +81,8 @@ ENV RESOLUTION_HEIGHT=1080
 RUN mkdir -p /var/log/supervisor
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Expose the original ports and port 5000 for the API
+# Expose ports: 7788 for Flask API, 6080 for VNC, 5901 for VNC, 5000 (extra for debugging if needed)
 EXPOSE 7788 6080 5901 5000
 
-# Run supervisord to manage processes.
-# Make sure that your supervisord.conf includes a program entry to run "python api.py" for your API server.
+# Run Supervisor to manage processes (Make sure supervisord.conf starts the Flask API)
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
