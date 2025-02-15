@@ -38,6 +38,10 @@ from .custom_views import CustomAgentOutput, CustomAgentStepInfo
 
 logger = logging.getLogger(__name__)
 
+# --- NEW: Global rate limiter (10 calls per 60 seconds) ---
+from ratelimiter import RateLimiter
+global_llm_rate_limiter = RateLimiter(max_calls=10, period=60)
+# -----------------------------------------------------------
 
 class CustomAgent(Agent):
     def __init__(
@@ -50,8 +54,8 @@ class CustomAgent(Agent):
         controller: Controller = Controller(),
         use_vision: bool = True,
         save_conversation_path: Optional[str] = None,
-        max_failures: int = 5,
-        retry_delay: int = 10,
+        max_failures: int = 3,
+        retry_delay: int = 20,
         system_prompt_class: Type[SystemPrompt] = SystemPrompt,
         agent_prompt_class: Type[AgentMessagePrompt] = AgentMessagePrompt,
         max_input_tokens: int = 128000,
@@ -100,11 +104,8 @@ class CustomAgent(Agent):
             register_done_callback=register_done_callback,
             tool_calling_method=tool_calling_method
         )
-        if self.model_name in ["deepseek-reasoner"] or "deepseek-r1" in self.model_name:
-            self.use_deepseek_r1 = True
-            self.max_input_tokens = 64000
-        else:
-            self.use_deepseek_r1 = False
+        # Since you're using Gemini‑2.0‑flash‑exp, disable deepseek behavior:
+        self.use_deepseek_r1 = False
 
         self._last_actions = None
         self.extracted_content = ""
@@ -166,7 +167,10 @@ class CustomAgent(Agent):
             if self.use_deepseek_r1
             else input_messages
         )
-        ai_message = self.llm.invoke(messages_to_process)
+        # --- Wrap the LLM call with the global rate limiter ---
+        with global_llm_rate_limiter:
+            ai_message = self.llm.invoke(messages_to_process)
+        # -------------------------------------------------------
         self.message_manager._add_message_with_tokens(ai_message)
         if self.use_deepseek_r1:
             logger.info("🤯 Start Deep Thinking: ")
