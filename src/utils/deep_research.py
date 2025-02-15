@@ -6,7 +6,7 @@ import google.api_core.exceptions
 import random
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
-from src.utils.deep_research import deep_research
+from .deep_research import deep_research
 from src.utils import utils
 
 # Load environment variables
