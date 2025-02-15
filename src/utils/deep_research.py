@@ -100,17 +100,23 @@ async def deep_research(task, llm, agent_state=None, **kwargs):
             search_iteration += 1
             logger.info(f"Start {search_iteration}th Search...")
 
+            # Provide explicit instructions for a valid JSON response
             query_prompt = f"""
-            User Instruction:{task} 
-            Previous Queries: {json.dumps(history_query)} 
-            Previous Search Results: {json.dumps(history_infos)}
+User Instruction: {task}
+Please respond with a valid JSON object that contains a key "queries" mapping to an array of query strings.
+Previous Queries: {json.dumps(history_query)}
+Previous Search Results: {json.dumps(history_infos)}
             """
             
             search_messages = [
-                SystemMessage(content="Process the following task:"),
+                SystemMessage(content="Process the following task and return a valid JSON object with a 'queries' key:"),
                 HumanMessage(content=query_prompt)
             ]
             ai_query_msg = invoke_with_retry(search_messages)
+
+            # Log the raw response for debugging
+            logger.debug(f"Raw LLM response: {ai_query_msg.content}")
+
             try:
                 ai_query_content = json.loads(repair_json(ai_query_msg.content))
                 if not isinstance(ai_query_content, dict) or "queries" not in ai_query_content:
@@ -192,10 +198,10 @@ async def generate_final_report(task, history_infos, save_dir, llm, error_msg=No
 
         history_infos_ = json.dumps(history_infos, indent=4)
         record_json_path = os.path.join(save_dir, "record_infos.json")
-        logger.info(f"save All recorded information at {record_json_path}")
+        logger.info(f"Save all recorded information at {record_json_path}")
         with open(record_json_path, "w") as fw:
             json.dump(history_infos, fw, indent=4)
-        report_prompt = f"User Instruction:{task} \n Search Information:\n {history_infos_}"
+        report_prompt = f"User Instruction: {task}\nSearch Information:\n{history_infos_}"
         report_messages = [
             SystemMessage(content=writer_system_prompt),
             HumanMessage(content=report_prompt)
@@ -218,9 +224,9 @@ async def generate_final_report(task, history_infos, save_dir, llm, error_msg=No
         report_file_path = os.path.join(save_dir, "final_report.md")
         with open(report_file_path, "w", encoding="utf-8") as f:
             f.write(report_content)
-        logger.info(f"Save Report at: {report_file_path}")
+        logger.info(f"Report saved at: {report_file_path}")
         return report_content, report_file_path
 
     except Exception as report_error:
-        logger.error(f"Failed to generate partial report: {report_error}")
+        logger.error(f"Failed to generate final report: {report_error}")
         return f"Error generating report: {str(report_error)}", None
