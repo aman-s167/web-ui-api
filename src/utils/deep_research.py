@@ -36,12 +36,11 @@ def get_api_key():
     """Rotate through multiple API keys to avoid rate limits."""
     return next(api_keys).strip()
 
-
 def invoke_with_retry(messages, retries=3):
     """Invoke the LLM with API key rotation and retry logic."""
     for attempt in range(retries):
         try:
-    # Attempt to process the AI query message response
+            # Attempt to process the AI query message response
             llm = utils.get_llm_model(
                 provider="gemini",
                 model_name="gemini-2.0-flash-thinking-exp-01-21",
@@ -108,12 +107,15 @@ async def deep_research(task, llm, agent_state=None, **kwargs):
             """
             
             search_messages = [SystemMessage(content=query_prompt)]
-            ai_query_msg = invoke_with_retry([SystemMessage(content="Process the following task:"), HumanMessage(content=query_prompt)])
+            ai_query_msg = invoke_with_retry([
+                SystemMessage(content="Process the following task:"),
+                HumanMessage(content=query_prompt)
+            ])
             try:
-    ai_query_content = json.loads(repair_json(ai_query_msg.content))
-except (json.JSONDecodeError, TypeError) as e:
-    logger.error(f"JSON decoding error: {e}")
-    return {"error": "Invalid response from LLM. Please try again."}, None
+                ai_query_content = json.loads(repair_json(ai_query_msg.content))
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.error(f"JSON decoding error: {e}")
+                return {"error": "Invalid response from LLM. Please try again."}, None
 
             query_tasks = list(set(ai_query_content["queries"]))[:max_query_num]
             if not query_tasks:
@@ -192,8 +194,10 @@ async def generate_final_report(task, history_infos, save_dir, llm, error_msg=No
         with open(record_json_path, "w") as fw:
             json.dump(history_infos, fw, indent=4)
         report_prompt = f"User Instruction:{task} \n Search Information:\n {history_infos_}"
-        report_messages = [SystemMessage(content=writer_system_prompt),
-                           HumanMessage(content=report_prompt)]  # New context for report generation
+        report_messages = [
+            SystemMessage(content=writer_system_prompt),
+            HumanMessage(content=report_prompt)
+        ]  # New context for report generation
         ai_report_msg = llm.invoke(report_messages)
         if hasattr(ai_report_msg, "reasoning_content"):
             logger.info("🤯 Start Report Deep Thinking: ")
@@ -206,8 +210,8 @@ async def generate_final_report(task, history_infos, save_dir, llm, error_msg=No
         # Add error notification to the report
         if error_msg:
             report_content = f"## ⚠️ Research Incomplete - Partial Results\n" \
-                            f"**The research process was interrupted by an error:** {error_msg}\n\n" \
-                            f"{report_content}"
+                             f"**The research process was interrupted by an error:** {error_msg}\n\n" \
+                             f"{report_content}"
             
         report_file_path = os.path.join(save_dir, "final_report.md")
         with open(report_file_path, "w", encoding="utf-8") as f:
