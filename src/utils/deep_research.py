@@ -41,8 +41,9 @@ def invoke_with_retry(messages, retries=3):
     """Invoke the LLM with API key rotation and retry logic."""
     for attempt in range(retries):
         try:
+    # Attempt to process the AI query message response
             llm = utils.get_llm_model(
-                provider="google",
+                provider="gemini",
                 model_name="gemini-2.0-flash-thinking-exp-01-21",
                 temperature=1.0,
                 api_key=get_api_key()
