@@ -106,14 +106,16 @@ async def deep_research(task, llm, agent_state=None, **kwargs):
             Previous Search Results: {json.dumps(history_infos)}
             """
             
-            search_messages = [SystemMessage(content=query_prompt)]
-            ai_query_msg = invoke_with_retry([
+            search_messages = [
                 SystemMessage(content="Process the following task:"),
                 HumanMessage(content=query_prompt)
-            ])
+            ]
+            ai_query_msg = invoke_with_retry(search_messages)
             try:
                 ai_query_content = json.loads(repair_json(ai_query_msg.content))
-            except (json.JSONDecodeError, TypeError) as e:
+                if not isinstance(ai_query_content, dict) or "queries" not in ai_query_content:
+                    raise ValueError("Response is not in the expected JSON format with a 'queries' key.")
+            except (json.JSONDecodeError, TypeError, ValueError) as e:
                 logger.error(f"JSON decoding error: {e}")
                 return {"error": "Invalid response from LLM. Please try again."}, None
 
@@ -207,7 +209,7 @@ async def generate_final_report(task, history_infos, save_dir, llm, error_msg=No
         report_content = re.sub(r"^```\s*markdown\s*|^\s*```|```\s*$", "", report_content, flags=re.MULTILINE)
         report_content = report_content.strip()
 
-        # Add error notification to the report
+        # Add error notification to the report if needed
         if error_msg:
             report_content = f"## ⚠️ Research Incomplete - Partial Results\n" \
                              f"**The research process was interrupted by an error:** {error_msg}\n\n" \
