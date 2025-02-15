@@ -8,7 +8,7 @@ from src.utils import utils
 from src.agent.custom_agent import CustomAgent
 from src.controller.custom_controller import CustomController
 from src.agent.custom_prompts import CustomSystemPrompt, CustomAgentMessagePrompt
-from agent_state import AgentState  # Updated import path since agent_state.py is in the project root
+from agent_state import AgentState  # Updated path since agent_state.py is in the project root
 from browser_use.browser.browser import Browser, BrowserConfig
 from src.browser.custom_browser import CustomBrowser
 from src.browser.custom_context import BrowserContextConfig
@@ -37,7 +37,7 @@ def handle_agent():
         # Initialize the LLM model (example using Google Gemini)
         llm = utils.get_llm_model(
             provider="google",
-            model_name="gemini-2.0-flash-exp",
+            model_name="gemini-2.0-flash-thinking-exp-01-21",
             temperature=1.0,
             api_key=get_api_key()
         )
@@ -74,6 +74,9 @@ def handle_agent():
                 )
             ))
 
+        # --- For Testing: Return a dummy response ---
+        # return jsonify({'status': 'success', 'report': 'Agent API is up and running!'})
+
         # Instantiate and run the CustomAgent
         agent = CustomAgent(
             task=task,
@@ -102,4 +105,5 @@ def handle_agent():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8002, debug=True)
+    # Disable the reloader to avoid asyncio event loop conflicts.
+    app.run(host='0.0.0.0', port=8002, debug=True, use_reloader=False)
