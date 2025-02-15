@@ -1,7 +1,9 @@
 import os
 import sys
-# Ensure that the project root (the directory containing this file) is in sys.path.
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Ensure the current working directory is in sys.path so that agent_state.py is found.
+sys.path.insert(0, os.getcwd())
+print("sys.path:", sys.path)  # For debugging: prints the module search path
 
 import asyncio
 import logging
@@ -12,7 +14,7 @@ from src.utils import utils
 from src.agent.custom_agent import CustomAgent
 from src.controller.custom_controller import CustomController
 from src.agent.custom_prompts import CustomSystemPrompt, CustomAgentMessagePrompt
-from agent_state import AgentState  # Now agent_state.py is expected to be in the same directory as this file
+from agent_state import AgentState  # agent_state.py must be in the project root
 from browser_use.browser.browser import Browser, BrowserConfig
 from src.browser.custom_browser import CustomBrowser
 from src.browser.custom_context import BrowserContextConfig
@@ -33,12 +35,10 @@ def handle_agent():
     if not data or 'task' not in data:
         return jsonify({'error': 'Missing required field: task'}), 400
 
-    # For testing, return a dummy response immediately.
-    # If this dummy response works, then the problem lies in the asynchronous agent logic.
+    # For testing purposes, immediately return a dummy response.
     return jsonify({'status': 'success', 'report': 'Agent API is up and running!'})
 
-    # Once the dummy response works, you can uncomment the code below:
-
+    # Once the dummy response works, you can re-enable the asynchronous agent logic:
     """
     task = data['task']
     max_steps = data.get('max_steps', 10)
@@ -70,7 +70,7 @@ def handle_agent():
                 extra_chromium_args.append(f"--user-data-dir={chrome_user_data}")
             browser = CustomBrowser(
                 config=BrowserConfig(
-                    headless=True,  # set to False if you need to see the browser
+                    headless=True,
                     disable_security=True,
                     chrome_instance_path=chrome_path,
                     extra_chromium_args=extra_chromium_args
@@ -100,7 +100,6 @@ def handle_agent():
         result = asyncio.run(agent.run(max_steps=max_steps))
         final_report = result.final_result()
 
-        # Close browser context and browser if created
         if browser_context:
             asyncio.run(browser_context.close())
         if browser:
@@ -114,5 +113,5 @@ def handle_agent():
     """
 
 if __name__ == '__main__':
-    # Disable the reloader to avoid asyncio event loop conflicts.
+    # Disable the reloader to help avoid asyncio event loop conflicts.
     app.run(host='0.0.0.0', port=8002, debug=True, use_reloader=False)
