@@ -104,7 +104,7 @@ class CustomAgent(Agent):
             register_done_callback=register_done_callback,
             tool_calling_method=tool_calling_method
         )
-        # For Gemini, the deepseek condition is not met:
+        # Since you're using Gemini-2.0-flash-exp, we disable deepseek behavior:
         self.use_deepseek_r1 = False
 
         self._last_actions = None
