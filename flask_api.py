@@ -50,4 +50,4 @@ def handle_research():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=7788, debug=True)
+    app.run(host='0.0.0.0', port=8001, debug=True)
