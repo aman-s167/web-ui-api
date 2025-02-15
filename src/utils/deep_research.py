@@ -1,71 +1,94 @@
 import os
 import asyncio
-import logging
+import json
 import time
+import logging
 import google.api_core.exceptions
-import random
 from dotenv import load_dotenv
 from src.utils import utils
+from src.agent.custom_agent import CustomAgent
+from browser_use.browser.browser import BrowserConfig, Browser
+from browser_use.browser.context import BrowserContextConfig
 
 # Load environment variables
 load_dotenv()
 
-# Load environment variables
-load_dotenv()
+CACHE_FILE = "query_cache.json"
 
-app = Flask(__name__)
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+def load_cache():
+    """Load cached results from a file."""
+    if os.path.exists(CACHE_FILE):
+        with open(CACHE_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+
+def save_cache(cache):
+    """Save results to cache."""
+    with open(CACHE_FILE, "w") as f:
+        json.dump(cache, f, indent=4)
+
+
+cache = load_cache()
+
 
 def get_api_key():
     """Rotate between multiple API keys to avoid rate limits."""
     keys = os.getenv("GOOGLE_API_KEYS", "").split(",")
-    return random.choice(keys).strip() if keys else os.getenv("GOOGLE_API_KEY", "")
+    return keys[0].strip() if keys else os.getenv("GOOGLE_API_KEY", "")
 
-@app.route('/api/research', methods=['POST'])
-def handle_research():
-    data = request.get_json()
-    
-    if not data or 'task' not in data:
-        return jsonify({'error': 'Missing required field: task'}), 400
-    
-    task = data['task']
-    max_search_iterations = data.get('max_search_iterations', 5)
-    max_query_num = data.get('max_query_num', 3)
-    use_own_browser = data.get('use_own_browser', False)
-    
-    try:
-        llm = utils.get_llm_model(
-            provider="gemini",
-            model_name="gemini-2.0-flash-thinking-exp-01-21",
-            temperature=1.0,
-            api_key=get_api_key()
-        )
-        
-        retries = 3  # Number of retries for rate limit errors
-        for attempt in range(retries):
-            try:
-                report_content, _ = asyncio.run(deep_research(
-                    task=task, 
-                    llm=llm, 
-                    agent_state=None, 
-                    max_search_iterations=max_search_iterations, 
-                    max_query_num=max_query_num, 
-                    use_own_browser=use_own_browser
-                ))
-                return jsonify({'status': 'success', 'report': report_content})
-            
-            except google.api_core.exceptions.ResourceExhausted as e:
-                if attempt < retries - 1:
-                    wait_time = 5 * (attempt + 1)  # Exponential backoff (5s, 10s, 15s)
-                    logging.warning(f"Rate limit hit (429). Retrying in {wait_time} seconds...")
-                    time.sleep(wait_time)
-                else:
-                    logging.error("Max retries reached for 429 error.")
-                    return jsonify({'status': 'error', 'message': 'API rate limit exceeded. Please wait and try again later.'}), 429
-    
-    except Exception as e:
-        logging.error(f"Error processing research: {str(e)}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8001, debug=True)
+def invoke_with_retry(llm, messages, retries=3):
+    """Invoke the LLM with retry logic for handling rate limits."""
+    for attempt in range(retries):
+        try:
+            return llm.invoke(messages)
+        except google.api_core.exceptions.ResourceExhausted:
+            if attempt < retries - 1:
+                wait_time = 5 * (attempt + 1)  # Exponential backoff (5s, 10s, 15s)
+                print(f"🔄 Rate limit hit (429). Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
+            else:
+                raise Exception("Max retries reached for 429 error.")
+
+
+async def deep_research(task, llm, agent_state=None, **kwargs):
+    max_search_iterations = kwargs.get("max_search_iterations", 5)
+    max_query_num = kwargs.get("max_query_num", 3)
+
+    history_query = []
+    history_infos = []
+
+    for search_iteration in range(max_search_iterations):
+        logger.info(f"Start {search_iteration + 1}th Search...")
+        query_prompt = f"User Instruction: {task}\nPrevious Queries: {json.dumps(history_query)}"
+
+        ai_query_msg = invoke_with_retry(llm, [query_prompt])
+        ai_query_content = json.loads(ai_query_msg.content)
+
+        query_tasks = list(set(ai_query_content["queries"]))[:max_query_num]  # Remove duplicates
+        history_query.extend(query_tasks)
+
+        if not query_tasks:
+            break
+
+        for query in query_tasks:
+            if query in cache:
+                print(f"✅ Using cached result for: {query}")
+                history_infos.append(cache[query])
+                continue
+
+            agent = CustomAgent(task=query, llm=llm)
+            agent_result = await agent.run()
+            query_results = agent_result.final_result()
+
+            cache[query] = query_results
+            save_cache(cache)
+
+            history_infos.append(query_results)
+
+    logger.info("\nFinish Searching, Start Generating Report...")
+    return history_infos
