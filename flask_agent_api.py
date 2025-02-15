@@ -22,7 +22,7 @@ from browser_use.browser.context import BrowserContextConfig as BU_BrowserContex
 # Load environment variables and initialize Flask
 load_dotenv()
 app = Flask(__name__)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 def get_api_key():
     keys = os.getenv("GOOGLE_API_KEYS", "").split(",")
