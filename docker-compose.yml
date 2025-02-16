@@ -54,3 +54,4 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    network_mode: "coolify"  # ✅ Attach to the same network as n8n
