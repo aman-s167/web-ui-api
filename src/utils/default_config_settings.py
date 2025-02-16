@@ -4,7 +4,7 @@ import uuid
 import gradio as gr
 
 # ✅ Load Redis URL from environment or fallback to localhost:6380
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6380/0")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6381/0")
 
 def default_config():
     """Prepare the default configuration"""
