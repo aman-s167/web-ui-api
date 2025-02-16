@@ -3,6 +3,8 @@ import pickle
 import uuid
 import gradio as gr
 
+# ✅ Load Redis URL from environment or fallback to localhost:6380
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6380/0")
 
 def default_config():
     """Prepare the default configuration"""
@@ -28,8 +30,8 @@ def default_config():
         "save_trace_path": "./tmp/traces",
         "save_agent_history_path": "./tmp/agent_history",
         "task": "go to google.com and type 'OpenAI' click search and give me the first url",
+        "redis_url": REDIS_URL,  # ✅ Added Redis URL to the config
     }
-
 
 def load_config_from_file(config_file):
     """Load settings from a UUID.pkl file."""
@@ -40,7 +42,6 @@ def load_config_from_file(config_file):
     except Exception as e:
         return f"Error loading configuration: {str(e)}"
 
-
 def save_config_to_file(settings, save_dir="./tmp/webui_settings"):
     """Save the current settings to a UUID.pkl file with a UUID name."""
     os.makedirs(save_dir, exist_ok=True)
@@ -48,7 +49,6 @@ def save_config_to_file(settings, save_dir="./tmp/webui_settings"):
     with open(config_file, 'wb') as f:
         pickle.dump(settings, f)
     return f"Configuration saved to {config_file}"
-
 
 def save_current_config(*args):
     current_config = {
@@ -73,9 +73,9 @@ def save_current_config(*args):
         "save_trace_path": args[18],
         "save_agent_history_path": args[19],
         "task": args[20],
+        "redis_url": REDIS_URL,  # ✅ Save Redis URL in configuration
     }
     return save_config_to_file(current_config)
-
 
 def update_ui_from_config(config_file):
     if config_file is not None:
@@ -103,6 +103,7 @@ def update_ui_from_config(config_file):
                 gr.update(value=loaded_config.get("save_trace_path", "./tmp/traces")),
                 gr.update(value=loaded_config.get("save_agent_history_path", "./tmp/agent_history")),
                 gr.update(value=loaded_config.get("task", "")),
+                gr.update(value=loaded_config.get("redis_url", REDIS_URL)),  # ✅ Load Redis URL into UI
                 "Configuration loaded successfully."
             )
         else:
