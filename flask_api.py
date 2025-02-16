@@ -1,30 +1,19 @@
 import os
-import sys
 import asyncio
 import logging
 import time
-import redis
 import google.api_core.exceptions
 import random
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify  # ✅ Added missing imports
 from dotenv import load_dotenv
+from src.utils.deep_research import deep_research  # ✅ Fixed missing import
+from src.utils import utils
 
-# ✅ Ensure `/app/src/` is in Python path
-sys.path.append("/app/src")
-
-# ✅ Import deep_research after fixing path
-from utils.deep_research import deep_search  # Ensure this function exists
-from utils import utils
-
-# ✅ Load environment variables
+# Load environment variables
 load_dotenv()
 
-app = Flask(__name__)  # ✅ Initialize Flask
+app = Flask(__name__)  # ✅ Fixed Flask app initialization
 logging.basicConfig(level=logging.INFO)
-
-# ✅ Load Redis Configuration
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6381/0")
-redis_client = redis.StrictRedis.from_url(REDIS_URL, decode_responses=True)
 
 def get_api_key():
     """Rotate between multiple API keys to avoid rate limits."""
@@ -33,7 +22,6 @@ def get_api_key():
 
 @app.route('/api/research', methods=['POST'])
 def handle_research():
-    """API endpoint to handle deep research requests."""
     data = request.get_json()
     
     if not data or 'task' not in data:
@@ -43,13 +31,7 @@ def handle_research():
     max_search_iterations = data.get('max_search_iterations', 5)
     max_query_num = data.get('max_query_num', 3)
     use_own_browser = data.get('use_own_browser', False)
-
-    # ✅ Check Redis cache first
-    cache_key = f"research:{task}"
-    cached_result = redis_client.get(cache_key)
-    if cached_result:
-        return jsonify({'cached': True, 'report': cached_result})
-
+    
     try:
         llm = utils.get_llm_model(
             provider="google",
@@ -61,15 +43,15 @@ def handle_research():
         retries = 3  # Number of retries for rate limit errors
         for attempt in range(retries):
             try:
-                report_content, _ = asyncio.run(deep_search(
-                    query=task,
-                    max_retries=max_search_iterations
+                report_content, _ = asyncio.run(deep_research(
+                    task=task, 
+                    llm=llm, 
+                    agent_state=None, 
+                    max_search_iterations=max_search_iterations, 
+                    max_query_num=max_query_num, 
+                    use_own_browser=use_own_browser
                 ))
-                
-                # ✅ Cache the result in Redis (expires in 24 hours)
-                redis_client.setex(cache_key, 86400, report_content)
-                
-                return jsonify({'status': 'success', 'cached': False, 'report': report_content})
+                return jsonify({'status': 'success', 'report': report_content})
             
             except google.api_core.exceptions.ResourceExhausted as e:
                 if attempt < retries - 1:
