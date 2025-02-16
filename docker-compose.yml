@@ -11,11 +11,13 @@ services:
       - "6080:6080"  # noVNC web interface
       - "5901:5901"  # VNC port
       - "9222:9222"  # Chrome remote debugging port
+      - "8001:8001"  # API Endpoints
+      - "8003:8003"
     environment:
       - OPENAI_ENDPOINT=${OPENAI_ENDPOINT:-https://api.openai.com/v1}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GOOGLE_API_KEYS=AIzaSyCCCoVrr42NNT9w0abgabwTUSiuR5qAqK0,AIzaSyDgYLAowbyUI-bdV7AsMXKLd2kVhYt46aU
       - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-}
       - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY:-}
       - DEEPSEEK_ENDPOINT=${DEEPSEEK_ENDPOINT:-https://api.deepseek.com}
@@ -33,6 +35,10 @@ services:
       - VNC_PASSWORD=${VNC_PASSWORD:-vncpassword}
       - CHROME_DEBUGGING_PORT=9222
       - CHROME_DEBUGGING_HOST=localhost
+      # LLM selection environment variables:
+      - LLM_TYPE=${LLM_TYPE:-gemini}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-AIzaSyCCCoVrr42NNT9w0abgabwTUSiuR5qAqK0}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash-exp}
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
     restart: unless-stopped
@@ -43,9 +49,8 @@ services:
       - seccomp=unconfined
     tmpfs:
       - /tmp
-    networks:
-      - coolify  # Connect to the existing 'coolify' network
-
-networks:
-  coolify:
-    external: true  # Indicates that this network is externally defined
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "5901"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
