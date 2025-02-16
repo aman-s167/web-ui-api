@@ -4,7 +4,7 @@ import time
 import requests
 
 # ✅ Load Redis URL from environment
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6380/0")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6381/0")
 redis_client = redis.StrictRedis.from_url(REDIS_URL, decode_responses=True)
 
 def deep_search(query, max_retries=3, wait_time=10):
