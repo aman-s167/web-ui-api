@@ -40,7 +40,7 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-AIzaSyCCCoVrr42NNT9w0abgabwTUSiuR5qAqK0}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash-exp}
       # ✅ Added Redis connection environment variable
-      - REDIS_URL=redis://default:r1trhaIOhQr9ctEmEKgRBQtSb8zBHzQ17pjTXFEEsw3wPy9Wfp48QDbuj4a3jbHw@deep-research-redis:6380/0
+      - REDIS_URL=redis://default:r1trhaIOhQr9ctEmEKgRBQtSb8zBHzQ17pjTXFEEsw3wPy9Wfp48QDbuj4a3jbHw@deep-research-redis:6381/0
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
     restart: unless-stopped
